@@ -1,0 +1,52 @@
+"use client";
+
+import type { Route } from "next";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+
+import { startTestAction } from "@/app/tests/actions";
+import { Button } from "@/components/ui/button";
+
+export function StartTestButton({
+  testId,
+  hasAccess,
+}: {
+  testId: string;
+  hasAccess: boolean;
+}) {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  const start = () => {
+    setError(null);
+    startTransition(async () => {
+      const result = await startTestAction(testId);
+      if (!("attemptId" in result) || !result.attemptId) {
+        setError(result.error ?? "Unable to start this test.");
+        return;
+      }
+
+      router.push(
+        `/tests/${testId}/take?attempt=${result.attemptId}` as Route,
+      );
+    });
+  };
+
+  return (
+    <div className="space-y-3">
+      <Button className="w-full" disabled={!hasAccess || pending} onClick={start}>
+        {hasAccess
+          ? pending
+            ? "Preparing test..."
+            : "Start or resume test"
+          : "Premium access required"}
+      </Button>
+      {error ? (
+        <p className="text-sm text-red-700" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}

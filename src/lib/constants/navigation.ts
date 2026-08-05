@@ -1,0 +1,78 @@
+import type { Route } from "next";
+
+import { hasAnyRole } from "../auth/roles";
+import type { UserRole } from "../../types/auth";
+
+export type NavigationItem = {
+  href: Route;
+  label: string;
+  requiresAuth?: boolean;
+  roles?: UserRole[];
+};
+
+export const primaryNavigation: NavigationItem[] = [
+  { href: "/", label: "Home" },
+  { href: "/exam-format", label: "Exam Format" },
+  { href: "/practice", label: "Practice", requiresAuth: true },
+  { href: "/tests", label: "Mock Tests", requiresAuth: true },
+  { href: "/pricing", label: "Pricing" },
+];
+
+export const studentNavigation: NavigationItem[] = [
+  { href: "/dashboard", label: "Dashboard", requiresAuth: true },
+  { href: "/results", label: "Results", requiresAuth: true },
+  { href: "/mistakes", label: "Mistake Notebook", requiresAuth: true },
+  { href: "/bookmarks", label: "Bookmarks", requiresAuth: true },
+  { href: "/profile", label: "Profile", requiresAuth: true },
+];
+
+export const adminNavigation: NavigationItem[] = [
+  {
+    href: "/admin",
+    label: "Admin Dashboard",
+    requiresAuth: true,
+    roles: ["admin", "reviewer"],
+  },
+  {
+    href: "/admin/questions/new",
+    label: "Question Creator",
+    requiresAuth: true,
+    roles: ["admin"],
+  },
+  {
+    href: "/admin/tests/new",
+    label: "Test Builder",
+    requiresAuth: true,
+    roles: ["admin"],
+  },
+  {
+    href: "/admin/review",
+    label: "Review Queue",
+    requiresAuth: true,
+    roles: ["admin", "reviewer"],
+  },
+];
+
+export const reviewerNavigation: NavigationItem[] = [
+  {
+    href: "/admin",
+    label: "Reviewer Dashboard",
+    requiresAuth: true,
+    roles: ["admin", "reviewer"],
+  },
+  {
+    href: "/admin/review",
+    label: "Review Queue",
+    requiresAuth: true,
+    roles: ["admin", "reviewer"],
+  },
+];
+
+export function navigationForRoles(
+  items: readonly NavigationItem[],
+  roles: readonly UserRole[],
+) {
+  return items.filter(
+    (item) => !item.roles?.length || hasAnyRole(roles, item.roles),
+  );
+}
