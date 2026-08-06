@@ -6,6 +6,7 @@ import type {
   QuestionAuthoringInput,
   ReviewQueueQuestion,
 } from "@/lib/admin/schemas";
+import { canAdminEditQuestion } from "@/lib/admin/schemas";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 function questionSnapshot(
@@ -89,6 +90,10 @@ export async function createQuestion(
   actorId: string,
   input: QuestionAuthoringInput,
 ) {
+  if (input.intent === "correction") {
+    throw new Error("Published correction mode requires an existing question.");
+  }
+
   const admin = createSupabaseAdminClient();
   const structuredData = input.structuredData
     ? (JSON.parse(input.structuredData) as Record<string, unknown>)
@@ -167,7 +172,12 @@ export async function createQuestion(
   await writeAudit(actorId, "question.created", question.id, {
     verification_status: completedQuestion.verification_status,
   });
-  return { id: question.id as string, status: completedQuestion.verification_status as string };
+  return {
+    id: question.id as string,
+    status: completedQuestion.verification_status as string,
+    version: 1,
+    wasPublished: false,
+  };
 }
 
 export async function getEditableQuestion(
@@ -184,10 +194,14 @@ export async function getEditableQuestion(
   if (error) throw new Error("Unable to load this question.");
   if (!question) return null;
   if (
-    !["draft", "rejected"].includes(question.verification_status) ||
-    question.publication_status === "published"
+    !canAdminEditQuestion(
+      question.verification_status,
+      question.publication_status,
+    )
   ) {
-    throw new Error("Only unpublished draft or rejected questions can be edited.");
+    throw new Error(
+      "Only draft, rejected, or currently published questions can be edited.",
+    );
   }
 
   const { data: options, error: optionError } = await admin
@@ -225,6 +239,8 @@ export async function getEditableQuestion(
       0,
       options.findIndex((option) => option.id === question.correct_option_id),
     ),
+    verificationStatus: question.verification_status,
+    publicationStatus: question.publication_status,
   } as EditableQuestion;
 }
 
@@ -241,10 +257,18 @@ export async function updateQuestion(
     .maybeSingle();
   if (
     !current ||
-    !["draft", "rejected"].includes(current.verification_status) ||
-    current.publication_status === "published"
+    !canAdminEditQuestion(
+      current.verification_status,
+      current.publication_status,
+    )
   ) {
-    throw new Error("Only unpublished draft or rejected questions can be edited.");
+    throw new Error(
+      "Only draft, rejected, or currently published questions can be edited.",
+    );
+  }
+  const isPublishedCorrection = current.publication_status === "published";
+  if (!isPublishedCorrection && input.intent === "correction") {
+    throw new Error("Correction mode is only available for published questions.");
   }
 
   const { data: options } = await admin
@@ -280,7 +304,11 @@ export async function updateQuestion(
       source_type: input.sourceType,
       correct_option_id: options[input.correctOptionIndex].id,
       verification_status:
-        input.intent === "review" ? "under_review" : "draft",
+        isPublishedCorrection
+          ? current.verification_status
+          : input.intent === "review"
+            ? "under_review"
+            : "draft",
       version: nextVersion,
       updated_by: actorId,
     })
@@ -310,7 +338,9 @@ export async function updateQuestion(
     version: nextVersion,
     snapshot: questionSnapshot(updated, optionRows),
     change_summary:
-      input.intent === "review"
+      isPublishedCorrection
+        ? "Published question corrected by an administrator."
+        : input.intent === "review"
         ? "Question updated and resubmitted for review."
         : "Question draft updated.",
     changed_by: actorId,
@@ -320,8 +350,15 @@ export async function updateQuestion(
   await writeAudit(actorId, "question.updated", questionId, {
     version: nextVersion,
     verification_status: updated.verification_status,
+    publication_status: updated.publication_status,
+    correction: isPublishedCorrection,
   });
-  return { id: questionId, status: updated.verification_status as string };
+  return {
+    id: questionId,
+    status: updated.verification_status as string,
+    version: nextVersion,
+    wasPublished: isPublishedCorrection,
+  };
 }
 
 export async function getReviewQueue(

@@ -271,28 +271,30 @@ export function ReviewQueue({
             {isAdmin ? (
               <div className="flex flex-wrap gap-3 border-t border-slate-100 pt-5">
                 {(question.verificationStatus === "draft" ||
-                  question.verificationStatus === "rejected") && (
-                  <>
-                    <Button asChild size="sm" variant="outline">
-                      <Link
-                        href={
-                          `/admin/questions/${question.id}/edit` as Route
-                        }
-                      >
-                        <Pencil className="h-4 w-4" />
-                        Edit question
-                      </Link>
-                    </Button>
-                    <Button
-                      disabled={pending}
-                      onClick={() => lifecycle(question.id, "submit_review")}
-                      size="sm"
-                      variant="secondary"
+                  question.verificationStatus === "rejected" ||
+                  question.publicationStatus === "published") && (
+                  <Button asChild size="sm" variant="outline">
+                    <Link
+                      href={`/admin/questions/${question.id}/edit` as Route}
                     >
-                      <Send className="h-4 w-4" />
-                      Submit for review
-                    </Button>
-                  </>
+                      <Pencil className="h-4 w-4" />
+                      {question.publicationStatus === "published"
+                        ? "Correct published question"
+                        : "Edit question"}
+                    </Link>
+                  </Button>
+                )}
+                {(question.verificationStatus === "draft" ||
+                  question.verificationStatus === "rejected") && (
+                  <Button
+                    disabled={pending}
+                    onClick={() => lifecycle(question.id, "submit_review")}
+                    size="sm"
+                    variant="secondary"
+                  >
+                    <Send className="h-4 w-4" />
+                    Submit for review
+                  </Button>
                 )}
                 {question.verificationStatus === "approved" &&
                 question.publicationStatus !== "published" ? (

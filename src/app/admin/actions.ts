@@ -88,10 +88,14 @@ export async function createQuestionAction(
         : await createQuestion(user.id, parsed.data);
     revalidatePath("/admin");
     revalidatePath("/admin/review");
+    revalidatePath("/practice");
+    revalidatePath("/tests");
     return {
       status: "success",
       message:
-        result.status === "under_review"
+        result.wasPublished
+          ? `Published correction saved as version ${result.version}.`
+          : result.status === "under_review"
           ? parsedQuestionId
             ? "Question updated and submitted for review."
             : "Question created and submitted for review."

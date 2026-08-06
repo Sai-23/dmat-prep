@@ -25,12 +25,21 @@ export default async function QuestionEditPage({
       error instanceof Error ? error.message : "Unable to load this question.";
   }
   if (!loadError && !question) notFound();
+  const isPublished = question?.publicationStatus === "published";
 
   return (
     <PageShell
       eyebrow="Question editor"
-      title="Revise and resubmit the question"
-      description="Update the content after review feedback, preserve a version snapshot, and save it as a draft or send it back for review."
+      title={
+        isPublished
+          ? "Correct the published question"
+          : "Revise and resubmit the question"
+      }
+      description={
+        isPublished
+          ? "Fix the live question while preserving a version snapshot and a complete administrator audit trail."
+          : "Update the content after review feedback, preserve a version snapshot, and save it as a draft or send it back for review."
+      }
       admin
       roles={roles}
     >

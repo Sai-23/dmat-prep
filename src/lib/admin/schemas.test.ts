@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { questionAuthoringSchema } from "./schemas";
+import {
+  canAdminEditQuestion,
+  questionAuthoringSchema,
+} from "./schemas";
 
 const validQuestion = {
   module: "computer_science",
@@ -44,5 +47,21 @@ describe("question authoring validation", () => {
         options: ["Same", "Same", "Third", "Fourth"],
       }).success,
     ).toBe(false);
+  });
+
+  it("allows only admins to open editable workflow states", () => {
+    expect(canAdminEditQuestion("approved", "published")).toBe(true);
+    expect(canAdminEditQuestion("draft", "draft")).toBe(true);
+    expect(canAdminEditQuestion("under_review", "draft")).toBe(false);
+    expect(canAdminEditQuestion("approved", "draft")).toBe(false);
+  });
+
+  it("accepts a published correction intent", () => {
+    expect(
+      questionAuthoringSchema.safeParse({
+        ...validQuestion,
+        intent: "correction",
+      }).success,
+    ).toBe(true);
   });
 });

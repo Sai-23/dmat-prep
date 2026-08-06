@@ -32,7 +32,7 @@ export const questionAuthoringSchema = z
       .array(z.string().trim().min(1, "All four options are required."))
       .length(4),
     correctOptionIndex: z.coerce.number().int().min(0).max(3),
-    intent: z.enum(["draft", "review"]),
+    intent: z.enum(["draft", "review", "correction"]),
   })
   .superRefine((value, context) => {
     const expectedModule =
@@ -79,6 +79,17 @@ export const questionLifecycleSchema = z.object({
 });
 
 export const questionEditIdSchema = z.string().uuid();
+
+export function canAdminEditQuestion(
+  verificationStatus: string,
+  publicationStatus: string,
+) {
+  return (
+    publicationStatus === "published" ||
+    (publicationStatus !== "published" &&
+      ["draft", "rejected"].includes(verificationStatus))
+  );
+}
 
 export type QuestionAuthoringInput = z.infer<typeof questionAuthoringSchema>;
 
@@ -130,4 +141,6 @@ export type EditableQuestion = {
   sourceType: QuestionAuthoringInput["sourceType"];
   options: string[];
   correctOptionIndex: number;
+  verificationStatus: ReviewQueueQuestion["verificationStatus"];
+  publicationStatus: ReviewQueueQuestion["publicationStatus"];
 };

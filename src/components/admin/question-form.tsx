@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Eye, Save, Send } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Eye, Save, Send } from "lucide-react";
 import { useActionState, useState } from "react";
 
 import {
@@ -56,6 +56,8 @@ export function QuestionForm({
   const [correctOptionIndex, setCorrectOptionIndex] = useState(
     String(initialQuestion?.correctOptionIndex ?? 0),
   );
+  const isPublishedCorrection =
+    initialQuestion?.publicationStatus === "published";
 
   const changeQuestionType = (value: string) => {
     setQuestionType(value);
@@ -68,6 +70,25 @@ export function QuestionForm({
         <input name="questionId" type="hidden" value={initialQuestion.id} />
       ) : null}
       <div className="space-y-6">
+        {isPublishedCorrection ? (
+          <div
+            className="flex gap-3 rounded-lg border border-warning bg-warning-container p-4 text-sm text-warning-container-foreground"
+            role="status"
+          >
+            <AlertTriangle
+              aria-hidden="true"
+              className="mt-0.5 size-5 shrink-0"
+            />
+            <div>
+              <p className="font-semibold">Editing a published question</p>
+              <p className="mt-1 leading-6">
+                Saving creates a new audited version and updates the live
+                question immediately. Review the answer and explanation
+                carefully before saving.
+              </p>
+            </div>
+          </div>
+        ) : null}
         <Card>
           <CardHeader>
             <CardTitle>Question classification</CardTitle>
@@ -338,28 +359,47 @@ export function QuestionForm({
         ) : null}
 
         <div className="flex flex-wrap justify-end gap-3">
-          <Button
-            disabled={pending}
-            name="intent"
-            type="submit"
-            value="draft"
-            variant="secondary"
-          >
-            <Save className="h-4 w-4" />
-            {pending
-              ? "Saving..."
-              : initialQuestion
-                ? "Update draft"
-                : "Save draft"}
-          </Button>
-          <Button disabled={pending} name="intent" type="submit" value="review">
-            <Send className="h-4 w-4" />
-            {pending
-              ? "Submitting..."
-              : initialQuestion
-                ? "Update and submit"
-                : "Submit for review"}
-          </Button>
+          {isPublishedCorrection ? (
+            <Button
+              disabled={pending}
+              name="intent"
+              type="submit"
+              value="correction"
+            >
+              <Save className="h-4 w-4" />
+              {pending ? "Saving correction..." : "Save published correction"}
+            </Button>
+          ) : (
+            <>
+              <Button
+                disabled={pending}
+                name="intent"
+                type="submit"
+                value="draft"
+                variant="secondary"
+              >
+                <Save className="h-4 w-4" />
+                {pending
+                  ? "Saving..."
+                  : initialQuestion
+                    ? "Update draft"
+                    : "Save draft"}
+              </Button>
+              <Button
+                disabled={pending}
+                name="intent"
+                type="submit"
+                value="review"
+              >
+                <Send className="h-4 w-4" />
+                {pending
+                  ? "Submitting..."
+                  : initialQuestion
+                    ? "Update and submit"
+                    : "Submit for review"}
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
