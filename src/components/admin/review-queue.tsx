@@ -25,6 +25,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { ReviewQueueQuestion } from "@/lib/admin/schemas";
+import { GeneratedBankPreview } from "./generated-bank-preview";
+
+function objectValue(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function generationMetadata(question: ReviewQueueQuestion): Record<string, unknown> {
+  return objectValue(objectValue(question.metadata)?.generation) ?? {};
+}
 
 export function ReviewQueue({
   initialQuestions,
@@ -35,6 +44,16 @@ export function ReviewQueue({
 }) {
   const [questions, setQuestions] = useState(initialQuestions);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [moduleFilter, setModuleFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [difficultyFilter, setDifficultyFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [publicationFilter, setPublicationFilter] = useState("all");
+  const [generatorFilter, setGeneratorFilter] = useState("");
+  const [validatorFilter, setValidatorFilter] = useState("");
+  const [seedFilter, setSeedFilter] = useState("");
+  const [createdAfter, setCreatedAfter] = useState("");
+  const [search, setSearch] = useState("");
   const [comments, setComments] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<{
     type: "error" | "success";
@@ -44,13 +63,24 @@ export function ReviewQueue({
 
   const visible = useMemo(
     () =>
-      questions.filter(
-        (question) =>
-          statusFilter === "all" ||
-          question.verificationStatus === statusFilter ||
-          question.publicationStatus === statusFilter,
-      ),
-    [questions, statusFilter],
+      questions.filter((question) => {
+        const generation = generationMetadata(question);
+        const searchable = `${question.id} ${question.questionText} ${question.topic} ${question.subtopic ?? ""}`.toLowerCase();
+        return (
+          (statusFilter === "all" || question.verificationStatus === statusFilter) &&
+          (publicationFilter === "all" || question.publicationStatus === publicationFilter) &&
+          (moduleFilter === "all" || question.module === moduleFilter) &&
+          (typeFilter === "all" || question.questionType === typeFilter) &&
+          (difficultyFilter === "all" || question.difficulty === difficultyFilter) &&
+          (sourceFilter === "all" || question.sourceType === sourceFilter) &&
+          (!generatorFilter || String(generation.generatorVersion ?? "").toLowerCase().includes(generatorFilter.toLowerCase())) &&
+          (!validatorFilter || String(generation.validatorVersion ?? "").toLowerCase().includes(validatorFilter.toLowerCase())) &&
+          (!seedFilter || String(generation.seed ?? "").toLowerCase().includes(seedFilter.toLowerCase())) &&
+          (!createdAfter || question.createdAt.slice(0, 10) >= createdAfter) &&
+          (!search || searchable.includes(search.toLowerCase()))
+        );
+      }),
+    [questions, statusFilter, publicationFilter, moduleFilter, typeFilter, difficultyFilter, sourceFilter, generatorFilter, validatorFilter, seedFilter, createdAfter, search],
   );
 
   const review = (
@@ -115,7 +145,19 @@ export function ReviewQueue({
   return (
     <div className="space-y-5">
       <Card>
-        <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
+        <CardContent className="space-y-4 p-5">
+          <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
+            <input aria-label="Search question bank" className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm" onChange={(event) => setSearch(event.target.value)} placeholder="Search text or ID" value={search} />
+            <select aria-label="Filter module" className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm" onChange={(event) => setModuleFilter(event.target.value)} value={moduleFilter}><option value="all">All modules</option><option value="core">Core</option><option value="computer_science">Computer Science</option></select>
+            <select aria-label="Filter question type" className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm" onChange={(event) => setTypeFilter(event.target.value)} value={typeFilter}><option value="all">All types</option><option value="mathematical_equation">Equations</option><option value="latin_square">Latin squares</option><option value="figure_sequence">Figure sequences</option><option value="computer_science">Computer Science</option></select>
+            <select aria-label="Filter difficulty" className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm" onChange={(event) => setDifficultyFilter(event.target.value)} value={difficultyFilter}><option value="all">All difficulties</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select>
+            <select aria-label="Filter source" className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm" onChange={(event) => setSourceFilter(event.target.value)} value={sourceFilter}><option value="all">All sources</option><option value="generated">Generated</option><option value="manual">Manual</option><option value="imported">Imported</option></select>
+            <input aria-label="Filter generator version" className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm" onChange={(event) => setGeneratorFilter(event.target.value)} placeholder="Generator version" value={generatorFilter} />
+            <input aria-label="Filter validator version" className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm" onChange={(event) => setValidatorFilter(event.target.value)} placeholder="Validator version" value={validatorFilter} />
+            <input aria-label="Filter seed" className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm" onChange={(event) => setSeedFilter(event.target.value)} placeholder="Seed" value={seedFilter} />
+            <input aria-label="Created on or after" className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm" onChange={(event) => setCreatedAfter(event.target.value)} type="date" value={createdAfter} />
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-4">
           <p className="text-sm text-slate-600">
             {visible.length} of {questions.length} questions
           </p>
@@ -132,6 +174,8 @@ export function ReviewQueue({
             <option value="rejected">Rejected</option>
             <option value="published">Published</option>
           </select>
+          <select aria-label="Filter publication status" className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm" onChange={(event) => setPublicationFilter(event.target.value)} value={publicationFilter}><option value="all">All publication states</option><option value="draft">Unpublished</option><option value="published">Published</option><option value="retired">Retired</option><option value="flagged">Flagged</option></select>
+          </div>
         </CardContent>
       </Card>
 
@@ -178,6 +222,9 @@ export function ReviewQueue({
             </p>
           </CardHeader>
           <CardContent className="space-y-5">
+            {question.sourceType === "generated" ? (
+              <GeneratedBankPreview questionType={question.questionType} structuredData={question.structuredData} />
+            ) : null}
             {question.passage ? (
               <div className="rounded-2xl bg-blue-50 p-4 text-sm leading-7">
                 {question.passage}
@@ -219,6 +266,21 @@ export function ReviewQueue({
                 {question.explanation}
               </p>
             </div>
+
+            {question.sourceType === "generated" ? (() => {
+              const generation = generationMetadata(question);
+              const metadata = objectValue(question.metadata);
+              const validation = objectValue(metadata?.validation);
+              return (
+                <div className="grid gap-3 rounded-2xl border border-slate-200 p-5 sm:grid-cols-2 lg:grid-cols-4">
+                  {["seed", "generatorVersion", "validatorVersion", "fingerprint", "requestedDifficulty", "calculatedDifficulty"].map((key) => (
+                    <div key={key}><p className="text-xs font-semibold uppercase text-slate-500">{key.replace(/([A-Z])/g, " $1")}</p><p className="mt-1 break-all font-mono text-xs">{String(generation[key] ?? "—")}</p></div>
+                  ))}
+                  <div><p className="text-xs font-semibold uppercase text-slate-500">Validation</p><p className="mt-1 text-sm font-semibold">{validation?.valid === true ? "Passed" : "Not verified"}</p></div>
+                  <div><p className="text-xs font-semibold uppercase text-slate-500">Verified answer</p><pre className="mt-1 overflow-x-auto text-xs">{JSON.stringify(metadata?.correctAnswer ?? "Stored in structured child questions", null, 2)}</pre></div>
+                </div>
+              );
+            })() : null}
 
             {question.verificationStatus === "under_review" ? (
               <div className="space-y-4 border-t border-slate-100 pt-5">

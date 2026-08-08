@@ -13,6 +13,8 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import {
   completePracticeAction,
+  reportPracticeQuestionAction,
+  showPracticeQuestionAction,
   startPracticeAction,
   submitPracticeAnswerAction,
 } from "@/app/practice/actions";
@@ -31,6 +33,10 @@ import type {
   PracticeQuestion,
 } from "@/lib/practice/schemas";
 import { formatStudyTime } from "@/lib/dashboard/recommendations";
+import { NativePracticeResponse } from "./native-practice-response";
+import { PracticeAnswerFeedback } from "./practice-answer-feedback";
+import type { PracticeAnswer } from "@/lib/practice/schemas";
+import { PRACTICE_TIMING_MODES } from "@/lib/practice/timing";
 
 type Session = {
   attemptId: string;
@@ -41,8 +47,10 @@ type Session = {
 
 type Feedback = {
   isCorrect: boolean;
-  correctOptionId: string;
+  correctAnswer: unknown;
   explanation: string;
+  timeSpentSeconds: number;
+  targetPaceSeconds: number;
 };
 
 type Result = {
@@ -69,9 +77,11 @@ function formatTimer(seconds: number) {
 export function PracticeExperience({
   filters,
   initialConfig,
+  initialSession,
 }: {
   filters: PracticeFilters;
   initialConfig?: Partial<PracticeConfig>;
+  initialSession?: (Session & { questionIndex: number }) | null;
 }) {
   const [config, setConfig] = useState<PracticeConfig>({
     module: initialConfig?.module ?? "computer_science",
@@ -83,15 +93,18 @@ export function PracticeExperience({
     timingMode: initialConfig?.timingMode ?? "untimed",
     questionId: initialConfig?.questionId,
   });
-  const [session, setSession] = useState<Session | null>(null);
-  const [questionIndex, setQuestionIndex] = useState(0);
-  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  const [session, setSession] = useState<Session | null>(initialSession ?? null);
+  const [questionIndex, setQuestionIndex] = useState(initialSession?.questionIndex ?? 0);
+  const [selectedAnswer, setSelectedAnswer] = useState<PracticeAnswer | null>(null);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [isPending, startTransition] = useTransition();
-  const questionStartedAt = useRef(0);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("technical_issue");
+  const [reportDetails, setReportDetails] = useState("");
+  const [reportSent, setReportSent] = useState(false);
   const completingRef = useRef(false);
 
   const topics = filters.topicsByModule[config.module];
@@ -99,6 +112,26 @@ export function PracticeExperience({
   const progress = session
     ? ((questionIndex + (feedback ? 1 : 0)) / session.questions.length) * 100
     : 0;
+  const answerReady = (() => {
+    if (!selectedAnswer || !question?.response) return false;
+    if (selectedAnswer.kind === "single_choice") return Boolean(selectedAnswer.optionId);
+    if (selectedAnswer.kind === "two_stage_single_choice") return selectedAnswer.optionIds.every(Boolean);
+    if (selectedAnswer.kind === "symbol_assignment") {
+      return question.response.kind === "symbol_assignment" &&
+        question.response.symbols.every((symbol) => Number.isInteger(selectedAnswer.values[symbol]));
+    }
+    if (question.response.kind !== "subject_answers") return false;
+    const data = question.structuredData && typeof question.structuredData === "object"
+      ? question.structuredData as { questions?: unknown[] }
+      : {};
+    return (data.questions?.length ?? 0) > 0 &&
+      Object.keys(selectedAnswer.answers).length === data.questions?.length;
+  })();
+
+  useEffect(() => {
+    if (!session || !question || feedback) return;
+    void showPracticeQuestionAction({ attemptId: session.attemptId, questionId: question.id });
+  }, [session, question, feedback]);
 
   const completeSession = (activeSession = session) => {
     if (!activeSession || completingRef.current) return;
@@ -177,7 +210,7 @@ export function PracticeExperience({
         requestedQuantity: response.requestedQuantity,
       });
       setQuestionIndex(0);
-      setSelectedOptionId(null);
+      setSelectedAnswer(null);
       setFeedback(null);
       setRemainingSeconds(
         response.expiresAt
@@ -189,23 +222,18 @@ export function PracticeExperience({
             )
           : null,
       );
-      questionStartedAt.current = Date.now();
     });
   };
 
   const submitAnswer = () => {
-    if (!session || !question || !selectedOptionId) return;
+    if (!session || !question || !selectedAnswer) return;
     setError(null);
 
     startTransition(async () => {
       const response = await submitPracticeAnswerAction({
         attemptId: session.attemptId,
         questionId: question.id,
-        optionId: selectedOptionId,
-        timeSpentSeconds: Math.max(
-          0,
-          Math.round((Date.now() - questionStartedAt.current) / 1000),
-        ),
+        answer: selectedAnswer,
       });
 
       if (!("isCorrect" in response)) {
@@ -215,8 +243,10 @@ export function PracticeExperience({
 
       setFeedback({
         isCorrect: response.isCorrect,
-        correctOptionId: response.correctOptionId ?? "",
+        correctAnswer: response.correctAnswer,
         explanation: response.explanation ?? "",
+        timeSpentSeconds: response.timeSpentSeconds,
+        targetPaceSeconds: response.targetPaceSeconds,
       });
     });
   };
@@ -229,17 +259,18 @@ export function PracticeExperience({
     }
 
     setQuestionIndex((current) => current + 1);
-    setSelectedOptionId(null);
+    setSelectedAnswer(null);
     setFeedback(null);
     setError(null);
-    questionStartedAt.current = Date.now();
+    setReportOpen(false);
+    setReportSent(false);
   };
 
   const restart = () => {
     setSession(null);
     setResult(null);
     setFeedback(null);
-    setSelectedOptionId(null);
+    setSelectedAnswer(null);
     setRemainingSeconds(null);
     setError(null);
     completingRef.current = false;
@@ -376,52 +407,13 @@ export function PracticeExperience({
               </a>
             ) : null}
 
-            <div className="grid gap-3">
-              {question.options.map((option) => {
-                const isSelected = selectedOptionId === option.id;
-                const isCorrect = feedback?.correctOptionId === option.id;
-                const isIncorrectSelection = Boolean(
-                  feedback && isSelected && !feedback.isCorrect,
-                );
-
-                return (
-                  <button
-                    className={[
-                      "flex min-h-16 w-full items-center gap-4 rounded-md border p-4 text-left transition-colors",
-                      isCorrect
-                        ? "border-success bg-success-container text-success-container-foreground"
-                        : isIncorrectSelection
-                          ? "border-error bg-error-container text-error-container-foreground"
-                          : isSelected
-                            ? "border-primary bg-primary-muted ring-2 ring-primary-muted"
-                            : "border-workspace-border bg-surface-lowest hover:border-primary hover:bg-surface-low",
-                    ].join(" ")}
-                    disabled={Boolean(feedback) || isPending}
-                    key={option.id}
-                    onClick={() => setSelectedOptionId(option.id)}
-                    type="button"
-                  >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-current font-semibold">
-                      {option.label}
-                    </span>
-                    <span className="flex-1 text-sm leading-6 text-on-surface">
-                      {option.content}
-                    </span>
-                    {isCorrect ? (
-                      <span className="flex items-center gap-1 text-xs font-semibold">
-                        <CheckCircle2 className="h-4 w-4" />
-                        Correct answer
-                      </span>
-                    ) : isIncorrectSelection ? (
-                      <span className="flex items-center gap-1 text-xs font-semibold">
-                        <XCircle className="h-4 w-4" />
-                        Your answer
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
+            <NativePracticeResponse
+              answer={selectedAnswer}
+              correctAnswer={feedback?.correctAnswer}
+              disabled={Boolean(feedback) || isPending}
+              onChange={setSelectedAnswer}
+              question={question}
+            />
 
             {feedback ? (
               <div
@@ -443,8 +435,78 @@ export function PracticeExperience({
                 <p className="mt-3 text-sm leading-7">
                   {feedback.explanation}
                 </p>
+                <div className="mt-4">
+                  <PracticeAnswerFeedback answer={selectedAnswer} correctAnswer={feedback.correctAnswer} question={question} />
+                </div>
+                <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="font-semibold">Response time</dt>
+                    <dd>{formatTimer(feedback.timeSpentSeconds)}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold">Target pace</dt>
+                    <dd>{formatTimer(feedback.targetPaceSeconds)}</dd>
+                  </div>
+                </dl>
               </div>
             ) : null}
+
+            <div className="rounded-md border border-workspace-border bg-surface-low p-4">
+              <button
+                className="text-sm font-semibold text-primary hover:underline"
+                onClick={() => setReportOpen((open) => !open)}
+                type="button"
+              >
+                Report question
+              </button>
+              {reportOpen ? (
+                <div className="mt-4 grid gap-3">
+                  <label className="grid gap-1 text-sm font-semibold">
+                    Reason
+                    <select
+                      className="h-11 rounded-md border border-workspace-border bg-surface-lowest px-3 font-normal"
+                      onChange={(event) => setReportReason(event.target.value)}
+                      value={reportReason}
+                    >
+                      <option value="incorrect_answer">Incorrect answer</option>
+                      <option value="ambiguous_wording">Ambiguous wording</option>
+                      <option value="unclear_explanation">Unclear explanation</option>
+                      <option value="formatting_problem">Formatting problem</option>
+                      <option value="technical_issue">Technical issue</option>
+                    </select>
+                  </label>
+                  <label className="grid gap-1 text-sm font-semibold">
+                    Details (optional)
+                    <textarea
+                      className="min-h-24 rounded-md border border-workspace-border bg-surface-lowest p-3 font-normal"
+                      maxLength={1000}
+                      onChange={(event) => setReportDetails(event.target.value)}
+                      value={reportDetails}
+                    />
+                  </label>
+                  <Button
+                    disabled={isPending || reportSent}
+                    onClick={() => {
+                      setError(null);
+                      startTransition(async () => {
+                        const response = await reportPracticeQuestionAction({
+                          attemptId: session.attemptId,
+                          questionId: question.id,
+                          reason: reportReason,
+                          details: reportDetails || undefined,
+                        });
+                        if (response.error) setError(response.error);
+                        else setReportSent(true);
+                      });
+                    }}
+                    type="button"
+                    variant="secondary"
+                  >
+                    {reportSent ? "Report sent" : "Send report"}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
 
             {error ? (
               <p className="rounded-md border border-error bg-error-container p-3 text-sm text-error-container-foreground" role="alert">
@@ -465,7 +527,7 @@ export function PracticeExperience({
                 </Button>
               ) : (
                 <Button
-                  disabled={!selectedOptionId || isPending}
+                  disabled={!answerReady || isPending}
                   onClick={submitAnswer}
                 >
                   {isPending ? "Checking..." : "Check answer"}
@@ -622,18 +684,7 @@ export function PracticeExperience({
         <fieldset>
           <legend className="text-sm font-semibold text-slate-800">Timing mode</legend>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            {[
-              {
-                value: "untimed",
-                title: "Untimed learning",
-                description: "Work without a countdown and focus on explanations.",
-              },
-              {
-                value: "timed",
-                title: "Timed practice",
-                description: "Use the combined estimated time for the selected set.",
-              },
-            ].map((mode) => (
+            {PRACTICE_TIMING_MODES.map((mode) => (
               <label
                 className={[
                   "cursor-pointer rounded-2xl border p-4",

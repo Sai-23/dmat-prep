@@ -1,0 +1,860 @@
+{
+  "schemaVersion": 1,
+  "scale": {
+    "common": "All fields use 1 (unacceptable) through 5 (excellent).",
+    "ambiguity": "1 means clearly ambiguous; 5 means unambiguous. Set ambiguityFlag=true whenever ambiguity requires investigation.",
+    "difficultyAgreement": "True only when the reviewer agrees with the requested/calculated label relative to the official demonstrated examples."
+  },
+  "commonFields": [
+    "correctness",
+    "formatFidelity",
+    "clarity",
+    "difficultyAppropriateness",
+    "ambiguity",
+    "mentalWorkloadAppropriateness",
+    "overallQuality",
+    "difficultyAgreement",
+    "ambiguityFlag",
+    "comments"
+  ],
+  "taskSpecificCriteria": {
+    "mathematical_equation": [
+      "variableCountAppropriate",
+      "dependencyDepthAppropriate",
+      "mentalArithmeticAppropriate",
+      "officialStructureSimilar",
+      "avoidsUnnecessaryAdvancedMathematics"
+    ],
+    "latin_square": [
+      "gridIsFiveByFive",
+      "clueDensityAppropriate",
+      "deductionDepthAppropriate",
+      "targetReasoningClear",
+      "officialFormatSimilar"
+    ],
+    "figure_sequence": [
+      "matrixPresentationClear",
+      "symbolCountAppropriate",
+      "movementRuleLegible",
+      "boundaryBehaviourLegible",
+      "rotationLegible",
+      "colourChangesLegible",
+      "progressionLegible",
+      "multiSymbolComplexityAppropriate",
+      "candidateStructureCorrect",
+      "visualClarity"
+    ]
+  },
+  "reviews": [
+    {
+      "sampleId": "q2-mathematical_equation-easy-01",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-easy-02",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-easy-03",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-easy-04",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-easy-05",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-easy-06",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-easy-07",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-easy-08",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-easy-09",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-easy-10",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-medium-01",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-medium-02",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-medium-03",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-medium-04",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-medium-05",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-medium-06",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-medium-07",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-medium-08",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-medium-09",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-medium-10",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-hard-01",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-hard-02",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-hard-03",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-hard-04",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-hard-05",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-hard-06",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-hard-07",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-hard-08",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-hard-09",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-mathematical_equation-hard-10",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-easy-01",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-easy-02",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-easy-03",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-easy-04",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-easy-05",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-easy-06",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-easy-07",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-easy-08",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-easy-09",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-easy-10",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-medium-01",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-medium-02",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-medium-03",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-medium-04",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-medium-05",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-medium-06",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-medium-07",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-medium-08",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-medium-09",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-medium-10",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-hard-01",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-hard-02",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-hard-03",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-hard-04",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-hard-05",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-hard-06",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-hard-07",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-hard-08",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-hard-09",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-latin_square-hard-10",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-easy-01",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-easy-02",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-easy-03",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-easy-04",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-easy-05",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-easy-06",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-easy-07",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-easy-08",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-easy-09",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-easy-10",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-medium-01",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-medium-02",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-medium-03",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-medium-04",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-medium-05",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-medium-06",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-medium-07",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-medium-08",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-medium-09",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-medium-10",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-hard-01",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-hard-02",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-hard-03",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-hard-04",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-hard-05",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-hard-06",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-hard-07",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-hard-08",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-hard-09",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    },
+    {
+      "sampleId": "q2-figure_sequence-hard-10",
+      "reviewerId": null,
+      "scores": null,
+      "difficultyAgreement": null,
+      "ambiguityFlag": null,
+      "taskSpecific": {},
+      "comments": ""
+    }
+  ]
+}

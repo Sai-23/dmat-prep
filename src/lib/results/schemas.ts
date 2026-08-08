@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { PracticeQuestion } from "@/lib/practice/schemas";
+import type { PracticeAnswer, PracticeQuestion } from "@/lib/practice/schemas";
 
 export const resultAttemptIdSchema = z.string().uuid();
 
@@ -36,6 +36,8 @@ export type ResultQuestion = Omit<
   markedForReview: boolean;
   isBookmarked: boolean;
   timeSpentSeconds: number;
+  answer?: PracticeAnswer | null;
+  correctAnswer?: unknown;
 };
 
 export type AttemptResult = {

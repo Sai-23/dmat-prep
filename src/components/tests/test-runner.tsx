@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 
 import {
+  processTestClockAction,
   saveTestResponseAction,
   submitTestAction,
 } from "@/app/tests/actions";
@@ -27,6 +28,8 @@ import {
 } from "@/components/ui/card";
 import { formatStudyTime } from "@/lib/dashboard/recommendations";
 import type { TestAttemptPayload } from "@/lib/tests/schemas";
+import { NativePracticeResponse } from "@/components/practice/native-practice-response";
+import type { PracticeAnswer } from "@/lib/practice/schemas";
 
 function formatTimer(seconds: number) {
   const hours = Math.floor(seconds / 3600);
@@ -46,12 +49,14 @@ type TestResult = {
 };
 
 export function TestRunner({ attempt }: { attempt: TestAttemptPayload }) {
-  const [questionIndex, setQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string | null>>(() =>
+  const sectionQuestions = attempt.questions.filter((item) => item.sectionId === attempt.currentSectionId);
+  const initialQuestionIndex = Math.max(0, sectionQuestions.findIndex((item) => item.id === attempt.currentQuestionId));
+  const [questionIndex, setQuestionIndex] = useState(initialQuestionIndex);
+  const [answers, setAnswers] = useState<Record<string, PracticeAnswer | null>>(() =>
     Object.fromEntries(
       attempt.initialResponses.map((response) => [
         response.questionId,
-        response.selectedOptionId,
+        response.answer,
       ]),
     ),
   );
@@ -77,7 +82,7 @@ export function TestRunner({ attempt }: { attempt: TestAttemptPayload }) {
   const [pending, startTransition] = useTransition();
   const questionStartedAt = useRef(0);
   const submittingRef = useRef(false);
-  const question = attempt.questions[questionIndex];
+  const question = sectionQuestions[questionIndex];
 
   const submitTest = (autoSubmitted = false) => {
     if (submittingRef.current) return;
@@ -95,7 +100,7 @@ export function TestRunner({ attempt }: { attempt: TestAttemptPayload }) {
         const saveResponse = await saveTestResponseAction({
           attemptId: attempt.attemptId,
           questionId: question.id,
-          selectedOptionId: answers[question.id] ?? null,
+          answer: answers[question.id] ?? null,
           markedForReview: marked.has(question.id),
           timeSpentSeconds,
         });
@@ -137,10 +142,23 @@ export function TestRunner({ attempt }: { attempt: TestAttemptPayload }) {
     const updateRemaining = () => {
       const seconds = Math.max(
         0,
-        Math.ceil((new Date(attempt.expiresAt).getTime() - Date.now()) / 1000),
+        Math.ceil((new Date(attempt.sectionExpiresAt).getTime() - Date.now()) / 1000),
       );
       setRemainingSeconds(seconds);
-      if (seconds === 0) submitTest(true);
+      if (seconds === 0 && !submittingRef.current) {
+        submittingRef.current = true;
+        startTransition(async () => {
+          const response = await processTestClockAction({ attemptId: attempt.attemptId });
+          if (response.error) {
+            setError(response.error);
+            submittingRef.current = false;
+          } else if ("finalized" in response && response.finalized && "correct" in response) {
+            setResult({ correct: response.correct, total: response.total, accuracy: response.accuracy, totalTimeSeconds: response.totalTimeSeconds });
+          } else {
+            window.location.reload();
+          }
+        });
+      }
     };
 
     updateRemaining();
@@ -148,10 +166,10 @@ export function TestRunner({ attempt }: { attempt: TestAttemptPayload }) {
     return () => window.clearInterval(timer);
     // Submission is guarded by a ref and the attempt expiry is immutable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [attempt.expiresAt, result]);
+  }, [attempt.sectionExpiresAt, result]);
 
   const persistResponse = (
-    selectedOptionId: string | null,
+    answer: PracticeAnswer | null,
     markedForReview: boolean,
     onSaved?: () => void,
   ) => {
@@ -166,7 +184,7 @@ export function TestRunner({ attempt }: { attempt: TestAttemptPayload }) {
       const response = await saveTestResponseAction({
         attemptId: attempt.attemptId,
         questionId: question.id,
-        selectedOptionId,
+        answer,
         markedForReview,
         timeSpentSeconds,
       });
@@ -178,7 +196,7 @@ export function TestRunner({ attempt }: { attempt: TestAttemptPayload }) {
 
       initialTimes.current.set(question.id, timeSpentSeconds);
       questionStartedAt.current = Date.now();
-      setAnswers((current) => ({ ...current, [question.id]: selectedOptionId }));
+      setAnswers((current) => ({ ...current, [question.id]: answer }));
       setMarked((current) => {
         const next = new Set(current);
         if (markedForReview) next.add(question.id);
@@ -279,7 +297,7 @@ export function TestRunner({ attempt }: { attempt: TestAttemptPayload }) {
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <Badge variant="subtle">
-                Question {questionIndex + 1} of {attempt.questions.length}
+                Question {questionIndex + 1} of {sectionQuestions.length}
               </Badge>
               <Badge>{question.difficulty}</Badge>
             </div>
@@ -309,34 +327,12 @@ export function TestRunner({ attempt }: { attempt: TestAttemptPayload }) {
               </pre>
             ) : null}
 
-            <div className="grid gap-3">
-              {question.options.map((option) => {
-                const selected = answers[question.id] === option.id;
-                return (
-                  <button
-                    className={[
-                      "flex min-h-16 w-full items-center gap-4 rounded-md border p-4 text-left transition-colors",
-                      selected
-                        ? "border-primary bg-primary-muted ring-2 ring-primary-muted"
-                        : "border-workspace-border bg-surface-lowest hover:border-primary hover:bg-surface-low",
-                    ].join(" ")}
-                    disabled={pending}
-                    key={option.id}
-                    onClick={() =>
-                      persistResponse(option.id, marked.has(question.id))
-                    }
-                    type="button"
-                  >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-current font-semibold">
-                      {option.label}
-                    </span>
-                    <span className="text-sm leading-6 text-on-surface">
-                      {option.content}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            <NativePracticeResponse
+              answer={answers[question.id] ?? null}
+              disabled={pending}
+              onChange={(answer) => persistResponse(answer, marked.has(question.id))}
+              question={question}
+            />
 
             {error ? (
               <p className="rounded-md border border-error bg-error-container p-3 text-sm text-error-container-foreground" role="alert">
@@ -369,7 +365,7 @@ export function TestRunner({ attempt }: { attempt: TestAttemptPayload }) {
                 </Button>
                 <Button
                   disabled={
-                    questionIndex === attempt.questions.length - 1 || pending
+                    questionIndex === sectionQuestions.length - 1 || pending
                   }
                   onClick={() => navigate(questionIndex + 1)}
                 >
@@ -388,7 +384,7 @@ export function TestRunner({ attempt }: { attempt: TestAttemptPayload }) {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-5 gap-2">
-                {attempt.questions.map((item, index) => {
+                {sectionQuestions.map((item, index) => {
                   const isCurrent = index === questionIndex;
                   const isAnswered = Boolean(answers[item.id]);
                   const isMarked = marked.has(item.id);

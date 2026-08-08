@@ -10,7 +10,7 @@ describe("test attempt validation", () => {
       saveTestResponseSchema.safeParse({
         attemptId: id,
         questionId: "20000000-0000-4000-8000-000000000002",
-        selectedOptionId: "30000000-0000-4000-8000-000000000003",
+        answer: { kind: "single_choice", optionId: "30000000-0000-4000-8000-000000000003" },
         markedForReview: true,
         timeSpentSeconds: 45,
       }).success,
@@ -22,7 +22,7 @@ describe("test attempt validation", () => {
       saveTestResponseSchema.safeParse({
         attemptId: id,
         questionId: "20000000-0000-4000-8000-000000000002",
-        selectedOptionId: null,
+        answer: null,
         markedForReview: true,
         timeSpentSeconds: 12,
       }).success,

@@ -19,6 +19,7 @@ function validInput() {
       {
         title: "Algorithms",
         module: "computer_science",
+        sectionType: "computer_science",
         durationSeconds: 1800,
         questionIds: [questionId],
       },
@@ -36,6 +37,7 @@ describe("adminTestBuilderSchema", () => {
     input.sections.push({
       title: "Programming",
       module: "computer_science",
+      sectionType: "computer_science",
       durationSeconds: 1200,
       questionIds: [questionId],
     });

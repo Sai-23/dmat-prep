@@ -4,11 +4,14 @@ import { requireUser } from "@/lib/auth/guards";
 import {
   createPracticeAttempt,
   finishPracticeAttempt,
+  markPracticeQuestionShown,
+  reportPracticeQuestion,
   recordPracticeAnswer,
 } from "@/lib/practice/data";
 import {
   answerSubmissionSchema,
   completePracticeSchema,
+  practiceReportSchema,
   practiceConfigSchema,
 } from "@/lib/practice/schemas";
 
@@ -31,6 +34,30 @@ export async function startPracticeAction(input: unknown) {
           ? error.message
           : "Unable to start practice right now.",
     };
+  }
+}
+
+export async function showPracticeQuestionAction(input: unknown) {
+  const user = await requireUser();
+  const parsed = answerSubmissionSchema.pick({ attemptId: true, questionId: true }).safeParse(input);
+  if (!parsed.success) return { error: "The practice question is invalid." };
+  try {
+    await markPracticeQuestionShown(user.id, parsed.data.attemptId, parsed.data.questionId);
+    return { error: null };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Unable to restore response timing." };
+  }
+}
+
+export async function reportPracticeQuestionAction(input: unknown) {
+  const user = await requireUser();
+  const parsed = practiceReportSchema.safeParse(input);
+  if (!parsed.success) return { error: "The question report is invalid." };
+  try {
+    await reportPracticeQuestion(user.id, parsed.data);
+    return { error: null, success: true };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Unable to report this question." };
   }
 }
 

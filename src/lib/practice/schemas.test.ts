@@ -43,4 +43,17 @@ describe("practice validation", () => {
       }).success,
     ).toBe(false);
   });
+
+  it.each([
+    { kind: "single_choice", optionId: "choice-a" },
+    { kind: "symbol_assignment", values: { A: 2, B: 7 } },
+    { kind: "two_stage_single_choice", optionIds: ["first", "second"] },
+    { kind: "subject_answers", answers: { child1: "a", child2: "d" } },
+  ])("accepts the native $kind response", (answer) => {
+    expect(answerSubmissionSchema.safeParse({
+      attemptId: "11111111-1111-4111-8111-111111111111",
+      questionId: "22222222-2222-4222-8222-222222222222",
+      answer,
+    }).success).toBe(true);
+  });
 });

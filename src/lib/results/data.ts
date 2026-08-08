@@ -10,6 +10,9 @@ import type {
   ResultQuestion,
 } from "@/lib/results/schemas";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import type { PracticeAnswer, PracticeQuestion } from "@/lib/practice/schemas";
+import type { PrivatePracticeSnapshot } from "@/lib/practice/native";
+import type { ExamSectionSnapshot } from "@/lib/tests/exam-spec";
 
 type AttemptRow = {
   id: string;
@@ -20,6 +23,7 @@ type AttemptRow = {
   score: number | null;
   accuracy: number | null;
   total_time_seconds: number;
+  test_snapshot?: unknown;
 };
 
 type ResponseRow = {
@@ -29,6 +33,7 @@ type ResponseRow = {
   is_marked_for_review: boolean;
   response_status: "unanswered" | "answered" | "skipped";
   time_spent_seconds: number;
+  response_payload?: unknown;
 };
 
 type QuestionRow = {
@@ -61,7 +66,7 @@ export async function getResultHistory(
   const { data, error } = await admin
     .from("test_attempts")
     .select(
-      "id, test_id, status, started_at, submitted_at, score, accuracy, total_time_seconds",
+      "id, test_id, status, started_at, submitted_at, score, accuracy, total_time_seconds, test_snapshot",
     )
     .eq("user_id", userId)
     .in("status", ["submitted", "auto_submitted"])
@@ -80,7 +85,7 @@ export async function getResultHistory(
 
   return attempts.map((attempt) => ({
     id: attempt.id,
-    testTitle: titleByTestId.get(attempt.test_id) ?? "Assessment",
+    testTitle: (attempt.test_snapshot as { title?: string } | undefined)?.title ?? titleByTestId.get(attempt.test_id) ?? "Assessment",
     status: attempt.status,
     startedAt: attempt.started_at,
     submittedAt: attempt.submitted_at,
@@ -98,7 +103,7 @@ export async function getAttemptResult(
   const { data: attemptData, error: attemptError } = await admin
     .from("test_attempts")
     .select(
-      "id, test_id, user_id, status, started_at, submitted_at, score, accuracy, total_time_seconds",
+      "id, test_id, user_id, status, started_at, submitted_at, score, accuracy, total_time_seconds, test_snapshot",
     )
     .eq("id", attemptId)
     .eq("user_id", userId)
@@ -113,7 +118,7 @@ export async function getAttemptResult(
     admin
       .from("user_responses")
       .select(
-        "question_id, selected_option_id, is_correct, is_marked_for_review, response_status, time_spent_seconds",
+        "question_id, selected_option_id, response_payload, is_correct, is_marked_for_review, response_status, time_spent_seconds",
       )
       .eq("attempt_id", attemptId)
       .order("created_at", { ascending: true }),
@@ -121,6 +126,55 @@ export async function getAttemptResult(
   ]);
   const responses = (responseData ?? []) as ResponseRow[];
   const questionIds = responses.map((response) => response.question_id);
+
+  const { data: snapshotItems } = await admin.from("practice_attempt_items")
+    .select("source_question_id, test_section_id, public_snapshot, private_snapshot, position")
+    .eq("attempt_id", attemptId).order("position");
+  if (snapshotItems?.length) {
+    const { data: bookmarkData } = await admin.from("bookmarks").select("question_id")
+      .eq("user_id", userId).in("question_id", questionIds);
+    const bookmarked = new Set((bookmarkData ?? []).map((item) => item.question_id as string));
+    const responseById = new Map(responses.map((response) => [response.question_id, response]));
+    const testSnapshot = attempt.test_snapshot as { title?: string; sections?: ExamSectionSnapshot[] } | undefined;
+    const sectionById = new Map((testSnapshot?.sections ?? []).map((section) => [section.id, section.title]));
+    const resultQuestions: ResultQuestion[] = snapshotItems.flatMap((item) => {
+      const response = responseById.get(item.source_question_id);
+      if (!response) return [];
+      const question = item.public_snapshot as PracticeQuestion;
+      const privateSnapshot = item.private_snapshot as PrivatePracticeSnapshot;
+      const answer = response.response_payload as PracticeAnswer | null;
+      const selectedOptionId = answer?.kind === "single_choice" ? answer.optionId : response.selected_option_id;
+      const correctOptionId = typeof privateSnapshot.correctAnswer === "string" ? privateSnapshot.correctAnswer : "";
+      return [{
+        id: question.id, module: question.module, questionType: question.questionType,
+        topic: question.topic, subtopic: question.subtopic, difficulty: question.difficulty,
+        questionText: question.questionText, passage: question.passage, code: question.code,
+        formula: question.formula, structuredData: question.structuredData, response: question.response,
+        options: question.options, sectionTitle: sectionById.get(String(item.test_section_id)) ?? "Test section",
+        selectedOptionId, correctOptionId, explanation: privateSnapshot.explanation,
+        responseStatus: response.response_status, isCorrect: response.is_correct === true,
+        markedForReview: response.is_marked_for_review, isBookmarked: bookmarked.has(question.id),
+        timeSpentSeconds: response.time_spent_seconds,
+        answer,
+        correctAnswer: privateSnapshot.correctAnswer,
+      }];
+    });
+    const correctCount = resultQuestions.filter((question) => question.isCorrect).length;
+    const answeredCount = resultQuestions.filter((question) => question.responseStatus === "answered").length;
+    const unansweredCount = resultQuestions.length - answeredCount;
+    const accuracy = resultQuestions.length ? (correctCount / resultQuestions.length) * 100 : 0;
+    const topicBreakdown = buildResultBreakdown(resultQuestions.map((question) => ({ label: question.topic, isCorrect: question.isCorrect, answered: question.responseStatus === "answered", timeSpentSeconds: question.timeSpentSeconds })));
+    const difficultyBreakdown = buildResultBreakdown(resultQuestions.map((question) => ({ label: question.difficulty, isCorrect: question.isCorrect, answered: question.responseStatus === "answered", timeSpentSeconds: question.timeSpentSeconds })));
+    return {
+      id: attempt.id, testTitle: testSnapshot?.title ?? "Assessment", status: attempt.status,
+      startedAt: attempt.started_at, submittedAt: attempt.submitted_at,
+      totalTimeSeconds: attempt.total_time_seconds, score: Number(attempt.score ?? correctCount),
+      accuracy: Number(attempt.accuracy ?? accuracy), correctCount,
+      incorrectCount: answeredCount - correctCount, unansweredCount, answeredCount,
+      topicBreakdown, difficultyBreakdown, questions: resultQuestions,
+      recommendation: buildResultRecommendation(accuracy, topicBreakdown[0]),
+    };
+  }
 
   const [
     { data: questionData, error: questionError },

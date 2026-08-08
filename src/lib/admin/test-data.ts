@@ -7,6 +7,7 @@ import type {
   EditableAdminTest,
 } from "@/lib/admin/test-schemas";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { validateOfficialFullMockSections } from "@/lib/tests/exam-spec";
 
 const PRACTICE_TEST_ID = "00000000-0000-4000-8000-000000000001";
 
@@ -39,7 +40,7 @@ async function validateQuestionAssignments(input: AdminTestBuilderInput) {
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin
     .from("questions")
-    .select("id, module")
+    .select("id, module, question_type")
     .in("id", questionIds)
     .eq("verification_status", "approved")
     .eq("publication_status", "published");
@@ -62,6 +63,9 @@ async function validateQuestionAssignments(input: AdminTestBuilderInput) {
           `The questions assigned to “${section.title}” do not match its module.`,
         );
       }
+      if (section.sectionType !== "mixed" && question.question_type !== section.sectionType) {
+        throw new Error(`Every question in “${section.title}” must match its section type.`);
+      }
     });
   });
 }
@@ -78,7 +82,7 @@ async function insertTestSections(
       input.sections.map((section, index) => ({
         test_id: testId,
         title: section.title,
-        section_type: section.module ?? input.module ?? "mixed",
+        section_type: section.sectionType,
         module: section.module ?? input.module,
         duration_seconds: section.durationSeconds,
         sort_order: sortOffset + index + 1,
@@ -230,7 +234,7 @@ export async function getEditableAdminTest(
         .eq("test_id", testId),
       admin
         .from("test_sections")
-        .select("id, title, module, duration_seconds, sort_order")
+        .select("id, title, section_type, module, duration_seconds, sort_order")
         .eq("test_id", testId)
         .order("sort_order", { ascending: true }),
     ]);
@@ -264,6 +268,7 @@ export async function getEditableAdminTest(
     randomizeOptions: test.randomize_options,
     sections: (sections ?? []).map((section) => ({
       title: section.title,
+      sectionType: section.section_type,
       module: section.module,
       durationSeconds: section.duration_seconds,
       questionIds: (mappings ?? [])
@@ -435,7 +440,7 @@ export async function updateAdminTestPublication(
   const admin = createSupabaseAdminClient();
   const { data: test } = await admin
     .from("tests")
-    .select("id, duration_seconds, is_published")
+    .select("id, test_type, duration_seconds, is_published")
     .eq("id", testId)
     .maybeSingle();
   if (!test) throw new Error("Test not found.");
@@ -452,17 +457,25 @@ export async function updateAdminTestPublication(
   } else {
     const { data: sections } = await admin
       .from("test_sections")
-      .select("id, duration_seconds")
+      .select("id, title, section_type, duration_seconds, sort_order")
       .eq("test_id", testId);
     if (!sections?.length) throw new Error("Add at least one test section.");
     const sectionIds = sections.map((section) => section.id);
     const { data: mappings } = await admin
       .from("test_questions")
-      .select("question_id")
+      .select("test_section_id, question_id")
       .in("test_section_id", sectionIds);
     const questionIds = (mappings ?? []).map((mapping) => mapping.question_id);
     if (!questionIds.length || new Set(questionIds).size !== questionIds.length) {
       throw new Error("Every section needs unique assigned questions.");
+    }
+    if (test.test_type === "full_mock") {
+      const structureError = validateOfficialFullMockSections(sections.sort((a, b) => a.sort_order - b.sort_order).map((section) => ({
+        id: section.id, title: section.title, sectionType: section.section_type,
+        durationSeconds: section.duration_seconds, sortOrder: section.sort_order,
+        questionCount: (mappings ?? []).filter((mapping) => mapping.test_section_id === section.id).length,
+      })));
+      if (structureError) throw new Error(structureError);
     }
     if (
       sections.reduce(

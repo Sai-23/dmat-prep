@@ -46,6 +46,7 @@ function newSection(index: number): BuilderSection {
   return {
     clientId: `new-${Date.now()}-${index}`,
     title: `Section ${index + 1}`,
+    sectionType: "mixed",
     module: null,
     durationSeconds: 1800,
     questionIds: [],
@@ -176,8 +177,9 @@ export function TestBuilder({
   };
 
   const normalizedSections = sections.map(
-    ({ title, module, durationSeconds, questionIds }) => ({
+    ({ title, sectionType, module, durationSeconds, questionIds }) => ({
       title,
+      sectionType,
       module,
       durationSeconds,
       questionIds,
@@ -329,6 +331,7 @@ export function TestBuilder({
             .filter(
               (question) =>
                 (!effectiveModule || question.module === effectiveModule) &&
+                (section.sectionType === "mixed" || question.questionType === section.sectionType) &&
                 (difficulty === "all" ||
                   question.difficulty === difficulty) &&
                 (!normalizedSearch ||
@@ -390,7 +393,7 @@ export function TestBuilder({
                 </div>
               </CardHeader>
               <CardContent className="space-y-5">
-                <div className="grid gap-4 md:grid-cols-[1fr_180px_160px]">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                   <label className="space-y-2 text-sm font-semibold">
                     Section title
                     <input
@@ -403,6 +406,20 @@ export function TestBuilder({
                       }
                       value={section.title}
                     />
+                  </label>
+                  <label className="space-y-2 text-sm font-semibold">
+                    Section type
+                    <select
+                      className="h-11 w-full rounded-xl border border-slate-300 bg-white px-4 font-normal"
+                      onChange={(event) => updateSection(section.clientId, (current) => ({ ...current, sectionType: event.target.value as BuilderSection["sectionType"], questionIds: current.questionIds.filter((id) => event.target.value === "mixed" || questionById.get(id)?.questionType === event.target.value) }))}
+                      value={section.sectionType}
+                    >
+                      <option value="mixed">Mixed</option>
+                      <option value="figure_sequence">Figure Sequences</option>
+                      <option value="mathematical_equation">Mathematical Equations</option>
+                      <option value="latin_square">Latin Squares</option>
+                      <option value="computer_science">Computer Science Subject</option>
+                    </select>
                   </label>
                   <label className="space-y-2 text-sm font-semibold">
                     Module

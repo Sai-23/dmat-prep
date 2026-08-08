@@ -2,7 +2,7 @@ import { PageShell } from "@/components/layout/page-shell";
 import { PracticeExperience } from "@/components/practice/practice-experience";
 import { ErrorState } from "@/components/shared/error-state";
 import { requireUser } from "@/lib/auth/guards";
-import { getPracticeFilters } from "@/lib/practice/data";
+import { getActivePracticeAttempt, getPracticeFilters } from "@/lib/practice/data";
 import type { PracticeConfig } from "@/lib/practice/schemas";
 
 export default async function PracticePage({
@@ -10,7 +10,7 @@ export default async function PracticePage({
 }: {
   searchParams: Promise<{ question?: string; module?: string }>;
 }) {
-  await requireUser();
+  const user = await requireUser();
   const query = await searchParams;
   const validQuestionId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     query.question ?? "",
@@ -31,10 +31,14 @@ export default async function PracticePage({
     : undefined;
 
   let filters;
+  let initialSession = null;
   let loadError: string | null = null;
 
   try {
     filters = await getPracticeFilters();
+    if (!validQuestionId) {
+      initialSession = await getActivePracticeAttempt(user.id);
+    }
   } catch (error) {
     loadError =
       error instanceof Error
@@ -54,7 +58,11 @@ export default async function PracticePage({
           description={loadError ?? "Unable to load practice configuration."}
         />
       ) : (
-        <PracticeExperience filters={filters} initialConfig={initialConfig} />
+        <PracticeExperience
+          filters={filters}
+          initialConfig={initialConfig}
+          initialSession={initialSession}
+        />
       )}
     </PageShell>
   );

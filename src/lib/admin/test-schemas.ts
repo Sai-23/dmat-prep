@@ -16,6 +16,7 @@ const nullableModule = z
 const testSectionSchema = z.object({
   title: z.string().trim().min(2, "Enter a section title.").max(120),
   module: nullableModule,
+  sectionType: z.enum(["figure_sequence", "mathematical_equation", "latin_square", "computer_science", "mixed"]),
   durationSeconds: z.coerce.number().int().min(60).max(14_400),
   questionIds: z.array(z.string().uuid()).min(1).max(100),
 });
@@ -107,6 +108,7 @@ export type EditableAdminTest = {
   randomizeOptions: boolean;
   sections: Array<{
     title: string;
+    sectionType: "figure_sequence" | "mathematical_equation" | "latin_square" | "computer_science" | "mixed";
     module: "core" | "computer_science" | null;
     durationSeconds: number;
     questionIds: string[];

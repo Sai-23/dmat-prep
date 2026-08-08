@@ -3,6 +3,7 @@
 import { requireUser } from "@/lib/auth/guards";
 import {
   gradeAndSubmitTest,
+  processTestClock,
   saveTestResponse,
   startTestAttempt,
 } from "@/lib/tests/data";
@@ -60,5 +61,16 @@ export async function submitTestAction(input: unknown) {
       error:
         error instanceof Error ? error.message : "Unable to submit this test.",
     };
+  }
+}
+
+export async function processTestClockAction(input: unknown) {
+  const user = await requireUser();
+  const parsed = submitTestSchema.pick({ attemptId: true }).safeParse(input);
+  if (!parsed.success) return { error: "The test attempt is invalid." };
+  try {
+    return { error: null, ...(await processTestClock(user.id, parsed.data.attemptId)) };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Unable to update the test clock." };
   }
 }

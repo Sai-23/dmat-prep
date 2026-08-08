@@ -1,13 +1,14 @@
 import { z } from "zod";
 
 import type { PracticeQuestion } from "@/lib/practice/schemas";
+import { answerSubmissionSchema, type PracticeAnswer } from "@/lib/practice/schemas";
 
 export const testIdSchema = z.string().uuid();
 
 export const saveTestResponseSchema = z.object({
   attemptId: z.string().uuid(),
   questionId: z.string().uuid(),
-  selectedOptionId: z.string().uuid().nullable(),
+  answer: answerSubmissionSchema.shape.answer.nullable(),
   markedForReview: z.boolean(),
   timeSpentSeconds: z.number().int().min(0).max(86_400),
 });
@@ -41,18 +42,23 @@ export type TestOverview = TestCatalogItem & {
 };
 
 export type TestQuestion = PracticeQuestion & {
+  sectionId: string;
   sectionTitle: string;
+  sectionPosition: number;
 };
 
 export type TestAttemptPayload = {
   attemptId: string;
   title: string;
-  durationSeconds: number;
-  expiresAt: string;
+  sectionExpiresAt: string;
+  serverNow: string;
+  currentSectionId: string;
+  currentQuestionId: string;
+  sections: Array<{ id: string; title: string; durationSeconds: number; sortOrder: number }>;
   questions: TestQuestion[];
   initialResponses: Array<{
     questionId: string;
-    selectedOptionId: string | null;
+    answer: PracticeAnswer | null;
     markedForReview: boolean;
     timeSpentSeconds: number;
   }>;

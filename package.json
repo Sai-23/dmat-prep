@@ -9,6 +9,12 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:generation:equations:stress": "node scripts/run-equation-stress.mjs",
+    "audit:q1": "node scripts/run-q1-integrity-audit.mjs",
+    "audit:q2:sample": "node scripts/run-q2-fidelity-sampler.mjs",
+    "audit:q6": "node scripts/run-q6-computer-science-stress.mjs",
+    "audit:cs35": "vitest run src/lib/generation/computer-science/testlets/cs35-benchmark.test.ts",
+    "audit:cs37:live": "vitest run src/lib/generation/computer-science/testlets/cs37-live-benchmark.test.ts",
     "check": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {

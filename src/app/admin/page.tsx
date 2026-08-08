@@ -126,6 +126,33 @@ export default async function AdminDashboardPage() {
             {isAdmin ? (
               <Card>
                 <CardHeader>
+                  <CardTitle>Generate questions</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm leading-6 text-slate-600">
+                    Create deterministic equation systems or Latin squares and inspect
+                    solver, difficulty, duplicate, and validation diagnostics before saving.
+                  </p>
+                  <Button asChild variant="secondary">
+                    <Link href={"/admin/generate" as Route}>
+                      Open validated generator
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : null}
+            {isAdmin ? (
+              <Card>
+                <CardHeader><CardTitle>Difficulty calibration</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm leading-6 text-slate-600">Compare generator difficulty with observed accuracy, response time, skips, reports, and sample-gated review flags.</p>
+                  <Button asChild variant="secondary"><Link href={"/admin/analytics" as Route}>Open calibration analytics</Link></Button>
+                </CardContent>
+              </Card>
+            ) : null}
+            {isAdmin ? (
+              <Card>
+                <CardHeader>
                   <CardTitle>Create question</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">

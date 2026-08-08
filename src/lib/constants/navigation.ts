@@ -34,6 +34,18 @@ export const adminNavigation: NavigationItem[] = [
     roles: ["admin", "reviewer"],
   },
   {
+    href: "/admin/generate" as Route,
+    label: "Generate Questions",
+    requiresAuth: true,
+    roles: ["admin"],
+  },
+  {
+    href: "/admin/figure-preview" as Route,
+    label: "Figure Renderer",
+    requiresAuth: true,
+    roles: ["admin"],
+  },
+  {
     href: "/admin/questions/new",
     label: "Question Creator",
     requiresAuth: true,

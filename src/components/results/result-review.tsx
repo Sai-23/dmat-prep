@@ -19,6 +19,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { ResultQuestion } from "@/lib/results/schemas";
+import { NativePracticeResponse } from "@/components/practice/native-practice-response";
+import { PracticeAnswerFeedback } from "@/components/practice/practice-answer-feedback";
 
 type ReviewFilter = "all" | "correct" | "incorrect" | "unanswered" | "marked";
 
@@ -205,7 +207,12 @@ export function ResultReview({ questions }: { questions: ResultQuestion[] }) {
                   </div>
                 ) : null}
 
-                <div className="grid gap-3">
+                {question.response?.kind && question.response.kind !== "single_choice" ? (
+                  <div className="space-y-4">
+                    <NativePracticeResponse answer={question.answer ?? null} correctAnswer={question.correctAnswer} disabled onChange={() => undefined} question={{ ...question, estimatedTimeSeconds: 1, imageUrl: null, tableData: null }} />
+                    <PracticeAnswerFeedback answer={question.answer ?? null} correctAnswer={question.correctAnswer} question={{ ...question, estimatedTimeSeconds: 1, imageUrl: null, tableData: null }} />
+                  </div>
+                ) : <div className="grid gap-3">
                   {question.options.map((option) => {
                     const isCorrectOption = option.id === question.correctOptionId;
                     const isSelected = option.id === question.selectedOptionId;
@@ -239,7 +246,7 @@ export function ResultReview({ questions }: { questions: ResultQuestion[] }) {
                       </div>
                     );
                   })}
-                </div>
+                </div>}
 
                 <div className="rounded-md bg-surface-low p-5">
                   <p className="font-semibold text-on-surface">Explanation</p>

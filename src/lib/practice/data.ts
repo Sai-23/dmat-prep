@@ -2,10 +2,13 @@ import "server-only";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type {
+  PracticeAnswer,
   PracticeConfig,
   PracticeFilters,
   PracticeQuestion,
 } from "@/lib/practice/schemas";
+import { createPracticeSnapshots, gradePracticeAnswer, type PrivatePracticeSnapshot } from "@/lib/practice/native";
+import { practiceTargetPaceSeconds } from "@/lib/practice/timing";
 
 const PRACTICE_TEST_ID = "00000000-0000-4000-8000-000000000001";
 
@@ -23,6 +26,11 @@ type QuestionRow = {
   table_data: unknown;
   image_url: string | null;
   estimated_time_seconds: number;
+  structured_data: unknown;
+  metadata: unknown;
+  explanation: string;
+  correct_option_id: string | null;
+  source_type: string;
 };
 
 type OptionRow = {
@@ -81,12 +89,11 @@ export async function createPracticeAttempt(
   let query = admin
     .from("questions")
     .select(
-      "id, module, question_type, topic, subtopic, difficulty, question_text, passage, code, formula, table_data, image_url, estimated_time_seconds",
+      "id, module, question_type, topic, subtopic, difficulty, question_text, passage, code, formula, table_data, image_url, estimated_time_seconds, structured_data, metadata, explanation, correct_option_id, source_type",
     )
     .eq("module", config.module)
     .eq("verification_status", "approved")
-    .eq("publication_status", "published")
-    .not("correct_option_id", "is", null);
+    .eq("publication_status", "published");
 
   if (config.questionId) query = query.eq("id", config.questionId);
   if (config.questionType !== "any") {
@@ -121,19 +128,29 @@ export async function createPracticeAttempt(
   if (optionError) throw new Error("Unable to load question options.");
 
   const optionRows = (optionData ?? []) as OptionRow[];
-  const completeRows = selectedRows.filter(
-    (question) =>
-      optionRows.filter((option) => option.question_id === question.id).length === 4,
-  );
+  const snapshots = selectedRows.flatMap((question) => {
+    try {
+      return [createPracticeSnapshots({
+        id: question.id, module: question.module, questionType: question.question_type,
+        topic: question.topic, subtopic: question.subtopic, difficulty: question.difficulty,
+        questionText: question.question_text, passage: question.passage, code: question.code,
+        formula: question.formula, tableData: question.table_data, imageUrl: question.image_url,
+        estimatedTimeSeconds: question.estimated_time_seconds, structuredData: question.structured_data,
+        metadata: question.metadata, explanation: question.explanation,
+        options: optionRows.filter((option) => option.question_id === question.id).map((option) => ({ id: option.id, label: option.label, content: option.content })),
+        correctOptionId: question.correct_option_id, sourceType: question.source_type,
+      })];
+    } catch { return []; }
+  });
 
-  if (!completeRows.length) {
+  if (!snapshots.length) {
     return {
-      error: "Matching questions do not yet have four answer options.",
+      error: "Matching questions do not contain a supported validated response model.",
     } as const;
   }
 
-  const durationSeconds = completeRows.reduce(
-    (total, question) => total + question.estimated_time_seconds,
+  const durationSeconds = snapshots.reduce(
+    (total, item) => total + item.publicQuestion.estimatedTimeSeconds,
     0,
   );
   const expiresAt =
@@ -159,39 +176,34 @@ export async function createPracticeAttempt(
     );
   }
 
-  const { error: responseError } = await admin.from("user_responses").insert(
-    completeRows.map((question) => ({
+  const { error: itemError } = await admin.from("practice_attempt_items").insert(
+    snapshots.map((item, index) => ({
       attempt_id: attempt.id,
-      question_id: question.id,
+      source_question_id: item.publicQuestion.id,
+      position: index + 1,
+      question_type: item.publicQuestion.questionType,
+      public_snapshot: item.publicQuestion,
+      private_snapshot: item.privateSnapshot,
+      generator_version: typeof item.privateSnapshot.provenance.generatorVersion === "string" ? item.privateSnapshot.provenance.generatorVersion : null,
+      validator_version: typeof item.privateSnapshot.provenance.validatorVersion === "string" ? item.privateSnapshot.provenance.validatorVersion : null,
+      seed: typeof item.privateSnapshot.provenance.seed === "string" ? item.privateSnapshot.provenance.seed : null,
+      fingerprint: typeof item.privateSnapshot.provenance.fingerprint === "string" ? item.privateSnapshot.provenance.fingerprint : null,
+    })),
+  );
+  if (itemError) throw new Error("Unable to snapshot this practice session.");
+
+  const { error: responseError } = await admin.from("user_responses").insert(
+    snapshots.map((item, index) => ({
+      attempt_id: attempt.id,
+      question_id: item.publicQuestion.id,
       response_status: "unanswered",
-      shown_at: attempt.started_at,
+      shown_at: index === 0 ? attempt.started_at : null,
     })),
   );
 
   if (responseError) throw new Error("Unable to initialize practice responses.");
 
-  const questions: PracticeQuestion[] = completeRows.map((question) => ({
-    id: question.id,
-    module: question.module,
-    questionType: question.question_type,
-    topic: question.topic,
-    subtopic: question.subtopic,
-    difficulty: question.difficulty,
-    questionText: question.question_text,
-    passage: question.passage,
-    code: question.code,
-    formula: question.formula,
-    tableData: question.table_data,
-    imageUrl: question.image_url,
-    estimatedTimeSeconds: question.estimated_time_seconds,
-    options: optionRows
-      .filter((option) => option.question_id === question.id)
-      .map((option) => ({
-        id: option.id,
-        label: option.label,
-        content: option.content,
-      })),
-  }));
+  const questions: PracticeQuestion[] = snapshots.map((item) => item.publicQuestion);
 
   return {
     error: null,
@@ -207,8 +219,7 @@ export async function recordPracticeAnswer(
   input: {
     attemptId: string;
     questionId: string;
-    optionId: string;
-    timeSpentSeconds: number;
+    answer: PracticeAnswer;
   },
 ) {
   const admin = createSupabaseAdminClient();
@@ -226,44 +237,43 @@ export async function recordPracticeAnswer(
     throw new Error("Time has expired for this practice session.");
   }
 
-  const [{ data: response }, { data: question }, { data: option }] =
+  const [{ data: response }, { data: item }] =
     await Promise.all([
       admin
         .from("user_responses")
-        .select("id")
+        .select("id, shown_at, response_status")
         .eq("attempt_id", input.attemptId)
         .eq("question_id", input.questionId)
         .maybeSingle(),
-      admin
-        .from("questions")
-        .select("correct_option_id, explanation")
-        .eq("id", input.questionId)
-        .maybeSingle(),
-      admin
-        .from("question_options")
-        .select("id, question_id")
-        .eq("id", input.optionId)
+      admin.from("practice_attempt_items").select("private_snapshot, public_snapshot")
+        .eq("attempt_id", input.attemptId).eq("source_question_id", input.questionId)
         .maybeSingle(),
     ]);
 
-  if (
-    !response ||
-    !question?.correct_option_id ||
-    !option ||
-    option.question_id !== input.questionId
-  ) {
+  if (!response || !item) {
     throw new Error("The submitted answer is invalid.");
   }
+  if (response.response_status === "answered") {
+    throw new Error("This question has already been answered.");
+  }
+  if (!response.shown_at) {
+    throw new Error("The question timer has not started. Refresh and try again.");
+  }
 
-  const isCorrect = input.optionId === question.correct_option_id;
+  const privateSnapshot = item.private_snapshot as PrivatePracticeSnapshot;
+  const isCorrect = gradePracticeAnswer(input.answer, privateSnapshot);
+  const answeredAt = new Date();
+  const shownAt = new Date(response.shown_at).getTime();
+  const timeSpentSeconds = Math.max(0, Math.min(86_400, Math.round((answeredAt.getTime() - shownAt) / 1000)));
   const { error } = await admin
     .from("user_responses")
     .update({
-      selected_option_id: input.optionId,
+      selected_option_id: null,
+      response_payload: input.answer,
       is_correct: isCorrect,
       response_status: "answered",
-      time_spent_seconds: input.timeSpentSeconds,
-      answered_at: new Date().toISOString(),
+      time_spent_seconds: timeSpentSeconds,
+      answered_at: answeredAt.toISOString(),
     })
     .eq("id", response.id);
 
@@ -271,9 +281,70 @@ export async function recordPracticeAnswer(
 
   return {
     isCorrect,
-    correctOptionId: question.correct_option_id as string,
-    explanation: question.explanation as string,
+    correctAnswer: privateSnapshot.correctAnswer,
+    explanation: privateSnapshot.explanation,
+    timeSpentSeconds,
+    targetPaceSeconds: practiceTargetPaceSeconds((item.public_snapshot as PracticeQuestion).estimatedTimeSeconds),
   };
+}
+
+export async function getActivePracticeAttempt(userId: string) {
+  const admin = createSupabaseAdminClient();
+  const { data: attempt } = await admin.from("test_attempts").select("id, expires_at")
+    .eq("test_id", PRACTICE_TEST_ID).eq("user_id", userId).eq("status", "in_progress")
+    .order("started_at", { ascending: false }).limit(1).maybeSingle();
+  if (!attempt) return null;
+  const [{ data: items }, { data: responses }] = await Promise.all([
+    admin.from("practice_attempt_items").select("source_question_id, position, public_snapshot").eq("attempt_id", attempt.id).order("position"),
+    admin.from("user_responses").select("question_id, response_status, response_payload").eq("attempt_id", attempt.id),
+  ]);
+  if (!items?.length) return null;
+  const responseMap = new Map((responses ?? []).map((response) => [response.question_id, response]));
+  const firstUnanswered = items.findIndex((item) => responseMap.get(item.source_question_id)?.response_status !== "answered");
+  if (firstUnanswered < 0) {
+    await finishPracticeAttempt(userId, attempt.id);
+    return null;
+  }
+  return {
+    attemptId: attempt.id as string,
+    expiresAt: attempt.expires_at as string | null,
+    questions: items.map((item) => item.public_snapshot as PracticeQuestion),
+    requestedQuantity: items.length,
+    questionIndex: firstUnanswered,
+  };
+}
+
+export async function markPracticeQuestionShown(
+  userId: string,
+  attemptId: string,
+  questionId: string,
+) {
+  const admin = createSupabaseAdminClient();
+  const { data: attempt } = await admin
+    .from("test_attempts")
+    .select("user_id, status")
+    .eq("id", attemptId)
+    .maybeSingle();
+  if (!attempt || attempt.user_id !== userId || attempt.status !== "in_progress") {
+    throw new Error("Practice attempt unavailable.");
+  }
+  const { error } = await admin
+    .from("user_responses")
+    .update({ shown_at: new Date().toISOString() })
+    .eq("attempt_id", attemptId)
+    .eq("question_id", questionId)
+    .eq("response_status", "unanswered")
+    .is("shown_at", null);
+  if (error) throw new Error("Unable to start response timing.");
+}
+
+export async function reportPracticeQuestion(userId: string, input: { attemptId: string; questionId: string; reason: string; details: string | null }) {
+  const admin = createSupabaseAdminClient();
+  const { data: attempt } = await admin.from("test_attempts").select("id, user_id").eq("id", input.attemptId).maybeSingle();
+  const { data: item } = await admin.from("practice_attempt_items").select("generator_version, validator_version, seed, fingerprint").eq("attempt_id", input.attemptId).eq("source_question_id", input.questionId).maybeSingle();
+  if (!attempt || attempt.user_id !== userId || !item) throw new Error("This question is not part of your practice attempt.");
+  const { error } = await admin.from("question_reports").insert({ question_id: input.questionId, reporter_id: userId, attempt_id: input.attemptId, reason: input.reason, details: input.details, provenance: { seed: item.seed, generatorVersion: item.generator_version, validatorVersion: item.validator_version, fingerprint: item.fingerprint } });
+  if (error) throw new Error("Unable to submit this report.");
 }
 
 export async function finishPracticeAttempt(

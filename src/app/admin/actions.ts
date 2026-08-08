@@ -3,11 +3,64 @@
 import { revalidatePath } from "next/cache";
 
 import {
+  createGeneratedEquationDraft,
+  createGeneratedLatinDraft,
+  createGeneratedFigureDraft,
+  createGeneratedComputerScienceDraft,
   createQuestion,
+  getGeneratedEquationFingerprints,
+  getGeneratedLatinFingerprints,
+  getGeneratedFigureFingerprints,
+  getGeneratedComputerScienceFingerprints,
   reviewQuestion,
   updateQuestionLifecycle,
   updateQuestion,
 } from "@/lib/admin/data";
+import {
+  equationGenerationRequestSchema,
+  generatedEquationSaveSchema,
+  generatedLatinSaveSchema,
+  generatedFigureSaveSchema,
+  figureGenerationRequestSchema,
+  computerScienceGenerationRequestSchema,
+  generatedComputerScienceSaveSchema,
+  latinGenerationRequestSchema,
+} from "@/lib/admin/generation-schemas";
+import {
+  generateValidatedMathematicalEquation,
+  reproduceValidatedMathematicalEquation,
+  type MathematicalEquationQuestion,
+} from "@/lib/generation/mathematical-equations";
+import {
+  generateValidatedLatinSquare,
+  reproduceValidatedLatinSquare,
+  type LatinSquareQuestion,
+} from "@/lib/generation/latin-squares";
+import {
+  generateValidatedFigureSequence,
+  reproduceValidatedFigureSequence,
+  type FigureSequenceQuestion,
+} from "@/lib/generation/figure-sequences";
+import {
+  generateValidatedBooleanSubjectTestlet,
+  generateValidatedCircuitSubjectTestlet,
+  generateValidatedProgrammingSubjectTestlet,
+  generateValidatedRecursionSubjectTestlet,
+  generateValidatedOopSubjectTestlet,
+  reproduceValidatedBooleanSubjectTestlet,
+  reproduceValidatedCircuitSubjectTestlet,
+  reproduceValidatedProgrammingSubjectTestlet,
+  reproduceValidatedRecursionSubjectTestlet,
+  reproduceValidatedOopSubjectTestlet,
+  adaptSubjectTestletForDelivery,
+  applyAiPresentation,
+  acceptCriticResult,
+  validateSubjectTestlet,
+  type SubjectTestlet,
+  type GeneratedComputerScienceUnit,
+  type LogicTestletSize,
+} from "@/lib/generation/computer-science";
+import { generateOpenAiPresentation, reviewWithOpenAiCritic } from "@/lib/generation/computer-science/testlets/openai-hybrid.server";
 import {
   saveAdminTest,
   updateAdminTestPublication,
@@ -38,6 +91,264 @@ export type AdminTestFormState = {
   testId?: string;
   errors?: Record<string, string[] | undefined>;
 };
+
+export type EquationPreviewResponse =
+  | {
+      error: null;
+      baseSeed: string;
+      questions: MathematicalEquationQuestion[];
+    }
+  | { error: string; baseSeed?: undefined; questions?: undefined };
+
+export async function generateEquationPreviewAction(
+  input: unknown,
+): Promise<EquationPreviewResponse> {
+  await requireRole(["admin"]);
+  const parsed = equationGenerationRequestSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid generation request." };
+  }
+
+  try {
+    const baseSeed = parsed.data.seed ?? crypto.randomUUID();
+    const fingerprints = await getGeneratedEquationFingerprints();
+    const questions: MathematicalEquationQuestion[] = [];
+    for (let index = 0; index < parsed.data.quantity; index += 1) {
+      const seed =
+        parsed.data.quantity === 1 ? baseSeed : `${baseSeed}:${index + 1}`;
+      const question = generateValidatedMathematicalEquation(
+        { seed, difficulty: parsed.data.difficulty },
+        fingerprints,
+      );
+      fingerprints.add(question.metadata.fingerprint);
+      questions.push(question);
+    }
+    return { error: null, baseSeed, questions };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to generate a validated preview.",
+    };
+  }
+}
+
+export async function saveGeneratedEquationAction(input: unknown) {
+  const { user } = await requireRole(["admin"]);
+  const parsed = generatedEquationSaveSchema.safeParse(input);
+  if (!parsed.success) return { error: "The generated-question provenance is invalid." };
+
+  try {
+    const question = reproduceValidatedMathematicalEquation(
+      { seed: parsed.data.seed, difficulty: parsed.data.difficulty },
+      parsed.data.attemptCount,
+    );
+    if (question.metadata.fingerprint !== parsed.data.fingerprint) {
+      return { error: "The preview could not be reproduced exactly and was not saved." };
+    }
+    const questionId = await createGeneratedEquationDraft(user.id, question);
+    revalidatePath("/admin");
+    revalidatePath("/admin/generate");
+    revalidatePath("/admin/review");
+    return { error: null, questionId };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to save the generated equation draft.",
+    };
+  }
+}
+
+export type LatinPreviewResponse =
+  | { error: null; baseSeed: string; questions: LatinSquareQuestion[] }
+  | { error: string; baseSeed?: undefined; questions?: undefined };
+
+export async function generateLatinPreviewAction(
+  input: unknown,
+): Promise<LatinPreviewResponse> {
+  await requireRole(["admin"]);
+  const parsed = latinGenerationRequestSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid generation request." };
+  }
+
+  try {
+    const baseSeed = parsed.data.seed ?? crypto.randomUUID();
+    const fingerprints = await getGeneratedLatinFingerprints();
+    const questions: LatinSquareQuestion[] = [];
+    for (let index = 0; index < parsed.data.quantity; index += 1) {
+      const seed = parsed.data.quantity === 1 ? baseSeed : `${baseSeed}:${index + 1}`;
+      const question = generateValidatedLatinSquare(
+        { seed, difficulty: parsed.data.difficulty },
+        fingerprints,
+      );
+      fingerprints.add(question.metadata.fingerprint);
+      questions.push(question);
+    }
+    return { error: null, baseSeed, questions };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to generate a validated Latin-square preview.",
+    };
+  }
+}
+
+export async function saveGeneratedLatinAction(input: unknown) {
+  const { user } = await requireRole(["admin"]);
+  const parsed = generatedLatinSaveSchema.safeParse(input);
+  if (!parsed.success) return { error: "The Latin-square provenance is invalid." };
+
+  try {
+    const question = reproduceValidatedLatinSquare(
+      { seed: parsed.data.seed, difficulty: parsed.data.difficulty },
+      parsed.data.attemptCount,
+    );
+    if (question.metadata.fingerprint !== parsed.data.fingerprint) {
+      return { error: "The Latin-square preview could not be reproduced exactly and was not saved." };
+    }
+    const questionId = await createGeneratedLatinDraft(user.id, question);
+    revalidatePath("/admin");
+    revalidatePath("/admin/generate");
+    revalidatePath("/admin/review");
+    return { error: null, questionId };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to save the generated Latin-square draft.",
+    };
+  }
+}
+
+export type FigurePreviewResponse =
+  | { error: null; baseSeed: string; questions: FigureSequenceQuestion[] }
+  | { error: string; baseSeed?: undefined; questions?: undefined };
+
+export async function generateFigurePreviewAction(input: unknown): Promise<FigurePreviewResponse> {
+  await requireRole(["admin"]);
+  const parsed = figureGenerationRequestSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid generation request." };
+  try {
+    const baseSeed = parsed.data.seed ?? crypto.randomUUID();
+    const fingerprints = await getGeneratedFigureFingerprints();
+    const questions: FigureSequenceQuestion[] = [];
+    for (let index = 0; index < parsed.data.quantity; index += 1) {
+      const seed = parsed.data.quantity === 1 ? baseSeed : `${baseSeed}:${index + 1}`;
+      const question = generateValidatedFigureSequence({ seed, difficulty: parsed.data.difficulty }, fingerprints);
+      fingerprints.add(question.metadata.fingerprint);
+      questions.push(question);
+    }
+    return { error: null, baseSeed, questions };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Unable to generate a validated figure-sequence preview." };
+  }
+}
+
+export async function saveGeneratedFigureAction(input: unknown) {
+  const { user } = await requireRole(["admin"]);
+  const parsed = generatedFigureSaveSchema.safeParse(input);
+  if (!parsed.success) return { error: "The figure-sequence provenance is invalid." };
+  try {
+    const question = reproduceValidatedFigureSequence(
+      { seed: parsed.data.seed, difficulty: parsed.data.difficulty },
+      parsed.data.attemptCount,
+    );
+    if (question.metadata.fingerprint !== parsed.data.fingerprint) {
+      return { error: "The figure-sequence preview could not be reproduced exactly and was not saved." };
+    }
+    const questionId = await createGeneratedFigureDraft(user.id, question);
+    revalidatePath("/admin");
+    revalidatePath("/admin/generate");
+    revalidatePath("/admin/review");
+    return { error: null, questionId };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Unable to save the generated figure-sequence draft." };
+  }
+}
+
+export type ComputerSciencePreviewResponse =
+  | { error: null; baseSeed: string; questions: GeneratedComputerScienceUnit[] }
+  | { error: string; baseSeed?: undefined; questions?: undefined };
+
+export async function generateComputerSciencePreviewAction(input: unknown): Promise<ComputerSciencePreviewResponse> {
+  await requireRole(["admin"]);
+  const parsed = computerScienceGenerationRequestSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid generation request." };
+  try {
+    const baseSeed = parsed.data.seed ?? crypto.randomUUID();
+    const fingerprints = await getGeneratedComputerScienceFingerprints();
+    const questions: GeneratedComputerScienceUnit[] = [];
+    for (let index = 0; index < parsed.data.quantity; index += 1) {
+      const seed = parsed.data.quantity === 1 ? baseSeed : `${baseSeed}:${index + 1}`;
+      const configuration = { seed, difficulty: parsed.data.difficulty, targetSize: parsed.data.targetSize as LogicTestletSize };
+      let unit = parsed.data.family === "programming_trace"
+        ? generateValidatedProgrammingSubjectTestlet(configuration, fingerprints)
+        : parsed.data.family === "programming_recursion"
+          ? generateValidatedRecursionSubjectTestlet(configuration, fingerprints)
+          : parsed.data.family === "programming_oop"
+            ? generateValidatedOopSubjectTestlet(configuration, fingerprints)
+        : parsed.data.family === "combinational_circuits"
+          ? generateValidatedCircuitSubjectTestlet(configuration, fingerprints)
+          : generateValidatedBooleanSubjectTestlet(configuration, fingerprints);
+      if (parsed.data.generationMode === "hybrid_dynamic") {
+        if (!("testlet" in unit) || !["programming_testlet", "recursion_testlet", "oop_testlet"].includes(unit.family)) throw new Error("Hybrid presentation is currently available for Programming testlets only.");
+        const presentation = await generateOpenAiPresentation(unit.testlet);
+        const presented = applyAiPresentation(unit.testlet, presentation.value, { model: presentation.model });
+        const criticResponse = await reviewWithOpenAiCritic(presented);
+        const reviewed = acceptCriticResult(presented, criticResponse.value);
+        if (reviewed.critic.decision !== "PASS") throw new Error(`AI critic ${reviewed.critic.decision.toLowerCase().replaceAll("_", " ")}: ${reviewed.critic.reasonCodes.join(", ") || reviewed.critic.summary}`);
+        unit = adaptSubjectTestletForDelivery(reviewed.testlet, configuration, unit.family);
+      }
+      fingerprints.add(unit.metadata.fingerprint);
+      questions.push(unit);
+    }
+    return { error: null, baseSeed, questions };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Unable to generate a validated subject unit." };
+  }
+}
+
+export async function saveGeneratedComputerScienceAction(input: unknown) {
+  const { user } = await requireRole(["admin"]);
+  const parsed = generatedComputerScienceSaveSchema.safeParse(input);
+  if (!parsed.success) return { error: "The subject-unit provenance is invalid." };
+  try {
+    const configuration = { seed: parsed.data.seed, difficulty: parsed.data.difficulty, targetSize: parsed.data.targetSize as LogicTestletSize };
+    let unit = parsed.data.family === "programming_trace"
+      ? reproduceValidatedProgrammingSubjectTestlet(configuration, parsed.data.attemptCount)
+      : parsed.data.family === "programming_recursion"
+        ? reproduceValidatedRecursionSubjectTestlet(configuration, parsed.data.attemptCount)
+        : parsed.data.family === "programming_oop"
+          ? reproduceValidatedOopSubjectTestlet(configuration, parsed.data.attemptCount)
+      : parsed.data.family === "combinational_circuits"
+        ? reproduceValidatedCircuitSubjectTestlet(configuration, parsed.data.attemptCount)
+        : reproduceValidatedBooleanSubjectTestlet(configuration, parsed.data.attemptCount);
+    if (parsed.data.generationMode === "hybrid_dynamic") {
+      const snapshot = parsed.data.snapshot as SubjectTestlet;
+      const validation = validateSubjectTestlet(snapshot);
+      if (!validation.valid || snapshot.metadata.reviewStatus !== "validated" || snapshot.metadata.seed !== parsed.data.seed) return { error: "The accepted hybrid snapshot is invalid or has not passed critic review." };
+      if (!("testlet" in unit) || !["programming_testlet", "recursion_testlet", "oop_testlet"].includes(unit.family)) return { error: "Hybrid snapshots are supported for Programming only." };
+      unit = adaptSubjectTestletForDelivery(snapshot, configuration, unit.family);
+    }
+    if (unit.metadata.fingerprint !== parsed.data.fingerprint) {
+      return { error: "The subject-unit preview could not be reproduced exactly and was not saved." };
+    }
+    const questionId = await createGeneratedComputerScienceDraft(user.id, unit);
+    revalidatePath("/admin");
+    revalidatePath("/admin/generate");
+    revalidatePath("/admin/review");
+    return { error: null, questionId };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Unable to save the generated subject-unit draft." };
+  }
+}
 
 export async function createQuestionAction(
   _state: QuestionFormState,

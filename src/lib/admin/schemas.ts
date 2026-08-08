@@ -104,6 +104,9 @@ export type ReviewQueueQuestion = {
   passage: string | null;
   code: string | null;
   formula: string | null;
+  sourceType: "manual" | "generated" | "imported";
+  structuredData: unknown;
+  metadata: unknown;
   explanation: string;
   correctOptionId: string | null;
   verificationStatus: "draft" | "under_review" | "approved" | "rejected";
