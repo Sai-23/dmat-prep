@@ -1,11 +1,10 @@
 import { z } from "zod";
 
-export const MODULES = ["core", "computer_science"] as const;
+export const MODULES = ["core"] as const;
 export const QUESTION_TYPES = [
   "figure_sequence",
   "mathematical_equation",
   "latin_square",
-  "computer_science",
 ] as const;
 export const DIFFICULTIES = ["easy", "medium", "hard"] as const;
 export const SOURCE_TYPES = ["manual", "generated", "imported"] as const;

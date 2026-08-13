@@ -4,14 +4,6 @@ import { performance } from "node:perf_hooks";
 import { afterAll, describe, expect, it } from "vitest";
 
 import {
-  generateBooleanLogicCandidate,
-  generateValidatedBooleanLogicUnit,
-  reproduceValidatedBooleanLogicUnit,
-  validateBooleanLogic,
-  type BooleanLogicGeneratedUnit,
-  type BooleanLogicUnitCandidate,
-} from "./computer-science";
-import {
   figureSequenceGenerator,
   figureSequenceValidator,
   generateValidatedFigureSequence,
@@ -209,21 +201,10 @@ const figureAdapter: Adapter<FigureSequenceCandidate, FigureSequenceQuestion> = 
     canonical: (question) => ({ structuredData: question.structuredData, sequence: question.sequence, correctAnswer: question.correctAnswer, fingerprint: question.metadata.fingerprint }),
     distribution: (question) => question.structuredData.rules.flatMap((rule) => [rule.movement ? `movement:${rule.movement.kind}` : "movement:none", rule.rotation ? `rotation:${rule.rotation.progression}` : "rotation:none", rule.colour ? `colour:${rule.colour.progression}` : "colour:none"]),
 };
-const booleanAdapter: Adapter<BooleanLogicUnitCandidate, BooleanLogicGeneratedUnit> = {
-    name: "computer-science-boolean",
-    generateCandidate: (seed, difficulty, attempt) => generateBooleanLogicCandidate({ seed, difficulty }, attempt),
-    validate: (candidate, difficulty) => validateBooleanLogic(candidate, difficulty),
-    generate: (seed, difficulty) => generateValidatedBooleanLogicUnit({ seed, difficulty }),
-    reproduce: (seed, difficulty, attempt) => reproduceValidatedBooleanLogicUnit({ seed, difficulty }, attempt),
-    canonical: (question) => ({ structuredData: question.structuredData, questions: question.questions, fingerprint: question.metadata.fingerprint }),
-    distribution: (question) => [`variables:${question.structuredData.variables.length}`, `expressions:${question.structuredData.expressions.length}`],
-};
-
 const auditRunners = [
   (difficulty: GenerationDifficulty) => runAdapter(equationAdapter, difficulty),
   (difficulty: GenerationDifficulty) => runAdapter(latinAdapter, difficulty),
   (difficulty: GenerationDifficulty) => runAdapter(figureAdapter, difficulty),
-  (difficulty: GenerationDifficulty) => runAdapter(booleanAdapter, difficulty),
 ];
 
 function markdownReport(results: AuditStatistics[]): string {
@@ -261,7 +242,7 @@ function markdownReport(results: AuditStatistics[]): string {
     "",
     `Mutations rejected: ${adversarialResult.rejected}/${adversarialResult.attempted} (${(adversarialResult.rejectionRate * 100).toFixed(1)}%).`,
     "",
-    "Mutation suites cover incorrect/ambiguous equation answers, invalid divisors and explanations; malformed, ambiguous and inconsistent Latin squares; corrupt figure frames, duplicate continuations and wrong answer keys; and malformed Boolean units, duplicate choices and evaluator mismatches.",
+    "Mutation suites cover incorrect or ambiguous equation answers, invalid divisors and explanations; malformed, ambiguous and inconsistent Latin squares; and corrupt figure frames, duplicate continuations and wrong answer keys.",
     "",
     "## Findings",
     "",
@@ -338,23 +319,6 @@ function runAdversarialAudit(): { attempted: number; rejected: number; rejection
   wrongRotation.structuredData.rules[0].rotation!.quarterTurns += 1;
   figureMutations.push(wrongRotation);
   figureMutations.forEach((candidate) => outcomes.push(!figureSequenceValidator.validate(candidate, "medium").valid));
-
-  const booleanAccepted = generateValidatedBooleanLogicUnit({ seed: "q1-adversarial-boolean", difficulty: "easy" });
-  const booleanBase = generateBooleanLogicCandidate({ seed: "q1-adversarial-boolean", difficulty: "easy" }, booleanAccepted.metadata.attemptCount);
-  const booleanMutations: BooleanLogicUnitCandidate[] = [];
-  const wrongBooleanAnswer = structuredClone(booleanBase);
-  wrongBooleanAnswer.questions[0].correctOptionId = "absent";
-  booleanMutations.push(wrongBooleanAnswer);
-  const duplicateBoolean = structuredClone(booleanBase);
-  duplicateBoolean.questions[0].options[1].content = duplicateBoolean.questions[0].options[0].content;
-  booleanMutations.push(duplicateBoolean);
-  const wrongRows = structuredClone(booleanBase);
-  wrongRows.structuredData.rowOrder.reverse();
-  booleanMutations.push(wrongRows);
-  const wrongBooleanDifficulty = structuredClone(booleanBase);
-  wrongBooleanDifficulty.questions[0].difficulty = "hard";
-  booleanMutations.push(wrongBooleanDifficulty);
-  booleanMutations.forEach((candidate) => outcomes.push(!validateBooleanLogic(candidate, "easy").valid));
 
   const rejected = outcomes.filter(Boolean).length;
   return { attempted: outcomes.length, rejected, rejectionRate: round(rejected / outcomes.length) };

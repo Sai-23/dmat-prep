@@ -43,16 +43,15 @@ export default async function AdminDashboardPage() {
           value: metrics.totalQuestions,
           icon: FileQuestion,
         },
-        {
+        ...(!isAdmin ? [{
           label: "Awaiting review",
           value: metrics.underReview,
           icon: ClipboardCheck,
-        },
-        {
+        }, {
           label: "Approved drafts",
           value: metrics.approvedDrafts,
           icon: Send,
-        },
+        }] : []),
         {
           label: "Published questions",
           value: metrics.publishedQuestions,
@@ -74,10 +73,10 @@ export default async function AdminDashboardPage() {
   return (
     <PageShell
       eyebrow={isAdmin ? "Admin dashboard" : "Reviewer dashboard"}
-      title={isAdmin ? "Operate the content lifecycle" : "Review content quality"}
+      title={isAdmin ? "Manage the Core question bank" : "Review content quality"}
       description={
         isAdmin
-          ? "Monitor question quality, review work, publication readiness, reports, and available assessments."
+          ? "Generate validated questions, manage the active bank, track reports, and maintain available assessments."
           : "Monitor the review queue, validate submitted questions, and track content quality."
       }
       admin
@@ -111,15 +110,14 @@ export default async function AdminDashboardPage() {
           <div className="grid gap-5 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Review questions</CardTitle>
+                <CardTitle>{isAdmin ? "Question bank" : "Review questions"}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm leading-6 text-slate-600">
-                  Validate submitted questions and record an approval, rejection, or
-                  change request.
+                  {isAdmin ? "Preview published questions and safely remove questions from future Practice and Mock selections." : "Validate submitted questions and record an approval, rejection, or change request."}
                 </p>
                 <Button asChild>
-                  <Link href="/admin/review">Open review queue</Link>
+                  <Link href="/admin/review">{isAdmin ? "Open question bank" : "Open review queue"}</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -130,8 +128,7 @@ export default async function AdminDashboardPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-sm leading-6 text-slate-600">
-                    Create deterministic equation systems or Latin squares and inspect
-                    solver, difficulty, duplicate, and validation diagnostics before saving.
+                    Create deterministic figure sequences, equation systems, or Latin squares. Valid questions publish automatically after every required check passes.
                   </p>
                   <Button asChild variant="secondary">
                     <Link href={"/admin/generate" as Route}>

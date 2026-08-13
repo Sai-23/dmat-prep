@@ -13,11 +13,9 @@ import {
   type VisibleLatinGrid,
 } from "./types";
 
-const PROVISIONAL_CLUE_RANGES = {
-  easy: { minimum: 14, maximum: 17 },
-  medium: { minimum: 10, maximum: 13 },
-  hard: { minimum: 7, maximum: 9 },
-} as const;
+// All levels deliberately share the same clue-count range. Difficulty comes
+// from target usefulness and propagation, with clue count only supporting it.
+const CLUE_RANGE = { minimum: 10, maximum: 15 } as const;
 
 const ESTIMATED_SECONDS = { easy: 55, medium: 75, hard: 100 } as const;
 
@@ -50,34 +48,62 @@ function coordinateKey({ row, column }: LatinCoordinate): string {
 }
 
 function selectClues(
+  completed: CompletedLatinGrid,
   target: LatinCoordinate,
   clueCount: number,
+  difficulty: LatinSquareGenerationConfiguration["difficulty"],
   random: SeededRandom,
 ): LatinCoordinate[] {
   const selected = new Map<string, LatinCoordinate>();
-
-  const targetDiagonalOffset =
-    (target.column - target.row + LATIN_SQUARE_SIZE) % LATIN_SQUARE_SIZE;
-  const availableOffsets = [0, 1, 2, 3, 4].filter(
-    (offset) => offset !== targetDiagonalOffset,
-  );
-  const coverageOffset = random.pick(availableOffsets);
-  for (let row = 0; row < LATIN_SQUARE_SIZE; row += 1) {
-    const coordinate = {
-      row,
-      column: (row + coverageOffset) % LATIN_SQUARE_SIZE,
-    };
+  const answer = completed[target.row][target.column];
+  const initialCandidateRanges = {
+    easy: [1, 2],
+    medium: [2, 3],
+    hard: [3, 4],
+  } as const;
+  const desiredInitialCandidates = random.pick(initialCandidateRanges[difficulty]);
+  const eliminatedSymbols = random.shuffle(
+    DEFAULT_LATIN_SYMBOLS.filter((symbol) => symbol !== answer),
+  ).slice(0, DEFAULT_LATIN_SYMBOLS.length - desiredInitialCandidates);
+  const startWithRow = random.boolean();
+  eliminatedSymbols.forEach((symbol, index) => {
+    const useRow = index % 2 === 0 ? startWithRow : !startWithRow;
+    const coordinate = useRow
+      ? { row: target.row, column: completed[target.row].indexOf(symbol) }
+      : { row: completed.findIndex((row) => row[target.column] === symbol), column: target.column };
     selected.set(coordinateKey(coordinate), coordinate);
-  }
+  });
 
   const remaining = random.shuffle(
     Array.from({ length: LATIN_SQUARE_SIZE * LATIN_SQUARE_SIZE }, (_, index) => ({
       row: Math.floor(index / LATIN_SQUARE_SIZE),
       column: index % LATIN_SQUARE_SIZE,
-    })).filter((coordinate) => coordinateKey(coordinate) !== coordinateKey(target)),
+    })).filter((coordinate) =>
+      coordinateKey(coordinate) !== coordinateKey(target) &&
+      coordinate.row !== target.row &&
+      coordinate.column !== target.column,
+    ),
   );
-  for (const coordinate of remaining) {
-    if (selected.size >= clueCount) break;
+  while (selected.size < clueCount) {
+    const rowCounts = Array.from({ length: LATIN_SQUARE_SIZE }, (_, row) =>
+      [...selected.values()].filter((coordinate) => coordinate.row === row).length,
+    );
+    const columnCounts = Array.from({ length: LATIN_SQUARE_SIZE }, (_, column) =>
+      [...selected.values()].filter((coordinate) => coordinate.column === column).length,
+    );
+    const available = remaining.filter((coordinate) =>
+      !selected.has(coordinateKey(coordinate)) &&
+      rowCounts[coordinate.row] < 4 &&
+      columnCounts[coordinate.column] < 4,
+    );
+    if (!available.length) break;
+    const minimumLoad = Math.min(...available.map((coordinate) =>
+      rowCounts[coordinate.row] + columnCounts[coordinate.column]),
+    );
+    const balanced = available.filter((coordinate) =>
+      rowCounts[coordinate.row] + columnCounts[coordinate.column] <= minimumLoad + 1,
+    );
+    const coordinate = random.pick(balanced);
     selected.set(coordinateKey(coordinate), coordinate);
   }
   return [...selected.values()];
@@ -114,9 +140,8 @@ export class LatinSquareGenerator
       row: random.integer(0, LATIN_SQUARE_SIZE - 1),
       column: random.integer(0, LATIN_SQUARE_SIZE - 1),
     };
-    const range = PROVISIONAL_CLUE_RANGES[configuration.difficulty];
-    const clueCount = random.integer(range.minimum, range.maximum);
-    const clues = selectClues(target, clueCount, random);
+    const clueCount = random.integer(CLUE_RANGE.minimum, CLUE_RANGE.maximum);
+    const clues = selectClues(completedGrid, target, clueCount, configuration.difficulty, random);
     const grid = visibleGrid(completedGrid, clues);
     const correctAnswer = completedGrid[target.row][target.column];
 
@@ -159,4 +184,3 @@ export class LatinSquareGenerator
 }
 
 export const latinSquareGenerator = new LatinSquareGenerator();
-

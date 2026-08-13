@@ -1,0 +1,164 @@
+{
+  "generatedAt": "2026-08-09T20:50:07.944Z",
+  "sampleSizePerDifficulty": 200,
+  "rows": [
+    {
+      "difficulty": "easy",
+      "accepted": 200,
+      "candidatesAttempted": 304,
+      "averageVariableCount": 2,
+      "averageEquationCount": 2,
+      "exactVariableCountPercent": 100,
+      "dependencyDepthDistribution": {
+        "1": 200
+      },
+      "averageDependencyDepth": 1,
+      "averageSolveSteps": 2.745,
+      "averageSubstitutions": 1,
+      "averageOperatorVariety": 2.36,
+      "operatorDistribution": {
+        "add": 273,
+        "subtract": 114,
+        "multiply": 124,
+        "divide": 80
+      },
+      "compoundExpressionFrequency": 0.805,
+      "averageCompoundExpressionCount": 0.92,
+      "branchFrequency": 0,
+      "recombinationFrequency": 0,
+      "indirectEntryFrequency": 0.63,
+      "averageWorkingMemory": 1,
+      "averageObviousEntryPointPenalty": 0.185,
+      "averageComplexityScore": 23.525,
+      "solverRejections": 0,
+      "solverRejectionRate": 0,
+      "duplicateRejections": 104,
+      "duplicateRejectionRate": 0.342,
+      "outOfDomainRejections": 0,
+      "outOfDomainRejectionRate": 0,
+      "difficultyRejections": 0,
+      "difficultyRejectionRate": 0,
+      "structuralSignatureCount": 52,
+      "structuralSignatureDiversity": 0.26,
+      "canonicalStructuralDuplicateRate": 0.74,
+      "familyDistribution": {
+        "low_scaled_pair": 59,
+        "low_divide_pair": 42,
+        "low_direct_chain": 74,
+        "low_sum_difference": 25
+      },
+      "dependencyGraphDistribution": {
+        "depth-1/branch-0/recombine-0/indirect-1": 126,
+        "depth-1/branch-0/recombine-0/indirect-0": 74
+      }
+    },
+    {
+      "difficulty": "medium",
+      "accepted": 200,
+      "candidatesAttempted": 202,
+      "averageVariableCount": 3,
+      "averageEquationCount": 3,
+      "exactVariableCountPercent": 100,
+      "dependencyDepthDistribution": {
+        "1": 35,
+        "2": 165
+      },
+      "averageDependencyDepth": 1.825,
+      "averageSolveSteps": 4.74,
+      "averageSubstitutions": 2.825,
+      "averageOperatorVariety": 3.065,
+      "operatorDistribution": {
+        "add": 492,
+        "subtract": 215,
+        "multiply": 341,
+        "divide": 77
+      },
+      "compoundExpressionFrequency": 1,
+      "averageCompoundExpressionCount": 1.92,
+      "branchFrequency": 1,
+      "recombinationFrequency": 0.825,
+      "indirectEntryFrequency": 0.205,
+      "averageWorkingMemory": 3.65,
+      "averageObviousEntryPointPenalty": 0.265,
+      "averageComplexityScore": 46.367,
+      "solverRejections": 0,
+      "solverRejectionRate": 0,
+      "duplicateRejections": 2,
+      "duplicateRejectionRate": 0.01,
+      "outOfDomainRejections": 0,
+      "outOfDomainRejectionRate": 0,
+      "difficultyRejections": 0,
+      "difficultyRejectionRate": 0,
+      "structuralSignatureCount": 111,
+      "structuralSignatureDiversity": 0.555,
+      "canonicalStructuralDuplicateRate": 0.445,
+      "familyDistribution": {
+        "medium_shared_source_recombine": 39,
+        "medium_compound_chain": 45,
+        "medium_recombine": 40,
+        "medium_cross_dependency": 41,
+        "medium_branch": 35
+      },
+      "dependencyGraphDistribution": {
+        "depth-2/branch-1/recombine-1/indirect-0": 124,
+        "depth-2/branch-1/recombine-1/indirect-1": 41,
+        "depth-1/branch-1/recombine-0/indirect-0": 35
+      }
+    },
+    {
+      "difficulty": "hard",
+      "accepted": 200,
+      "candidatesAttempted": 200,
+      "averageVariableCount": 4,
+      "averageEquationCount": 4,
+      "exactVariableCountPercent": 100,
+      "dependencyDepthDistribution": {
+        "2": 33,
+        "3": 167
+      },
+      "averageDependencyDepth": 2.835,
+      "averageSolveSteps": 6.645,
+      "averageSubstitutions": 4.775,
+      "averageOperatorVariety": 3.455,
+      "operatorDistribution": {
+        "add": 818,
+        "subtract": 285,
+        "multiply": 414,
+        "divide": 91
+      },
+      "compoundExpressionFrequency": 1,
+      "averageCompoundExpressionCount": 2.815,
+      "branchFrequency": 1,
+      "recombinationFrequency": 1,
+      "indirectEntryFrequency": 0.54,
+      "averageWorkingMemory": 4.13,
+      "averageObviousEntryPointPenalty": 0.115,
+      "averageComplexityScore": 66.29,
+      "solverRejections": 0,
+      "solverRejectionRate": 0,
+      "duplicateRejections": 0,
+      "duplicateRejectionRate": 0,
+      "outOfDomainRejections": 0,
+      "outOfDomainRejectionRate": 0,
+      "difficultyRejections": 0,
+      "difficultyRejectionRate": 0,
+      "structuralSignatureCount": 107,
+      "structuralSignatureDiversity": 0.535,
+      "canonicalStructuralDuplicateRate": 0.465,
+      "familyDistribution": {
+        "high_multi_stage": 26,
+        "high_branch_recombine": 33,
+        "high_compound_system": 32,
+        "high_two_stage_recombine": 33,
+        "high_mixed_dependency": 38,
+        "high_cross_dependency": 38
+      },
+      "dependencyGraphDistribution": {
+        "depth-3/branch-2/recombine-2/indirect-0": 59,
+        "depth-2/branch-1/recombine-1/indirect-0": 33,
+        "depth-3/branch-1/recombine-2/indirect-1": 70,
+        "depth-3/branch-1/recombine-1/indirect-1": 38
+      }
+    }
+  ]
+}

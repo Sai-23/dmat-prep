@@ -1,4 +1,3 @@
-export * from "./computer-science";
 export * from "./fingerprint";
 export * from "./figure-sequences";
 export * from "./latin-squares";

@@ -2,10 +2,9 @@
 
 import {
   CheckCircle2,
-  CircleOff,
   Pencil,
   Send,
-  ShieldCheck,
+  Trash2,
   XCircle,
 } from "lucide-react";
 import type { Route } from "next";
@@ -13,11 +12,12 @@ import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 
 import {
-  questionLifecycleAction,
+  deleteQuestionAction,
   reviewQuestionAction,
 } from "@/app/admin/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 import {
   Card,
   CardContent,
@@ -48,7 +48,7 @@ export function ReviewQueue({
   const [typeFilter, setTypeFilter] = useState("all");
   const [difficultyFilter, setDifficultyFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
-  const [publicationFilter, setPublicationFilter] = useState("all");
+  const [publicationFilter, setPublicationFilter] = useState(isAdmin ? "published" : "all");
   const [generatorFilter, setGeneratorFilter] = useState("");
   const [validatorFilter, setValidatorFilter] = useState("");
   const [seedFilter, setSeedFilter] = useState("");
@@ -59,6 +59,7 @@ export function ReviewQueue({
     type: "error" | "success";
     text: string;
   } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ReviewQueueQuestion | null>(null);
   const [pending, startTransition] = useTransition();
 
   const visible = useMemo(
@@ -115,30 +116,22 @@ export function ReviewQueue({
     });
   };
 
-  const lifecycle = (
-    questionId: string,
-    action: "submit_review" | "publish" | "retire",
-  ) => {
+  const removeQuestion = () => {
+    if (!deleteTarget) return;
+    const questionId = deleteTarget.id;
     setMessage(null);
     startTransition(async () => {
-      const response = await questionLifecycleAction({ questionId, action });
+      const response = await deleteQuestionAction({ questionId });
       if (response.error) {
         setMessage({ type: "error", text: response.error });
         return;
       }
-      setQuestions((current) =>
-        current.map((question) => {
-          if (question.id !== questionId) return question;
-          if (action === "submit_review") {
-            return { ...question, verificationStatus: "under_review" };
-          }
-          return {
-            ...question,
-            publicationStatus: action === "publish" ? "published" : "retired",
-          };
-        }),
-      );
-      setMessage({ type: "success", text: "Question lifecycle updated." });
+      setQuestions((current) => current.filter((question) => question.id !== questionId));
+      setDeleteTarget(null);
+      setMessage({
+        type: "success",
+        text: response.message ?? "Question removed from the active bank.",
+      });
     });
   };
 
@@ -148,8 +141,8 @@ export function ReviewQueue({
         <CardContent className="space-y-4 p-5">
           <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
             <input aria-label="Search question bank" className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm" onChange={(event) => setSearch(event.target.value)} placeholder="Search text or ID" value={search} />
-            <select aria-label="Filter module" className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm" onChange={(event) => setModuleFilter(event.target.value)} value={moduleFilter}><option value="all">All modules</option><option value="core">Core</option><option value="computer_science">Computer Science</option></select>
-            <select aria-label="Filter question type" className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm" onChange={(event) => setTypeFilter(event.target.value)} value={typeFilter}><option value="all">All types</option><option value="mathematical_equation">Equations</option><option value="latin_square">Latin squares</option><option value="figure_sequence">Figure sequences</option><option value="computer_science">Computer Science</option></select>
+            <select aria-label="Filter module" className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm" onChange={(event) => setModuleFilter(event.target.value)} value={moduleFilter}><option value="all">All modules</option><option value="core">Core</option></select>
+            <select aria-label="Filter question type" className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm" onChange={(event) => setTypeFilter(event.target.value)} value={typeFilter}><option value="all">All types</option><option value="mathematical_equation">Equations</option><option value="latin_square">Latin squares</option><option value="figure_sequence">Figure sequences</option></select>
             <select aria-label="Filter difficulty" className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm" onChange={(event) => setDifficultyFilter(event.target.value)} value={difficultyFilter}><option value="all">All difficulties</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select>
             <select aria-label="Filter source" className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm" onChange={(event) => setSourceFilter(event.target.value)} value={sourceFilter}><option value="all">All sources</option><option value="generated">Generated</option><option value="manual">Manual</option><option value="imported">Imported</option></select>
             <input aria-label="Filter generator version" className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm" onChange={(event) => setGeneratorFilter(event.target.value)} placeholder="Generator version" value={generatorFilter} />
@@ -161,7 +154,7 @@ export function ReviewQueue({
           <p className="text-sm text-slate-600">
             {visible.length} of {questions.length} questions
           </p>
-          <select
+          {!isAdmin ? <select
             aria-label="Filter review queue"
             className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm"
             onChange={(event) => setStatusFilter(event.target.value)}
@@ -173,7 +166,7 @@ export function ReviewQueue({
             <option value="draft">Draft</option>
             <option value="rejected">Rejected</option>
             <option value="published">Published</option>
-          </select>
+          </select> : null}
           <select aria-label="Filter publication status" className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm" onChange={(event) => setPublicationFilter(event.target.value)} value={publicationFilter}><option value="all">All publication states</option><option value="draft">Unpublished</option><option value="published">Published</option><option value="retired">Retired</option><option value="flagged">Flagged</option></select>
           </div>
         </CardContent>
@@ -198,9 +191,9 @@ export function ReviewQueue({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap gap-2">
                 <Badge>{question.difficulty}</Badge>
-                <Badge variant="subtle">
+                {!isAdmin ? <Badge variant="subtle">
                   {question.verificationStatus.replace("_", " ")}
-                </Badge>
+                </Badge> : null}
                 <Badge
                   variant={
                     question.publicationStatus === "published"
@@ -282,7 +275,7 @@ export function ReviewQueue({
               );
             })() : null}
 
-            {question.verificationStatus === "under_review" ? (
+            {!isAdmin && question.verificationStatus === "under_review" ? (
               <div className="space-y-4 border-t border-slate-100 pt-5">
                 <label className="block space-y-2 text-sm font-semibold">
                   Reviewer comments
@@ -332,7 +325,7 @@ export function ReviewQueue({
 
             {isAdmin ? (
               <div className="flex flex-wrap gap-3 border-t border-slate-100 pt-5">
-                {(question.verificationStatus === "draft" ||
+                {question.sourceType !== "generated" && (question.verificationStatus === "draft" ||
                   question.verificationStatus === "rejected" ||
                   question.publicationStatus === "published") && (
                   <Button asChild size="sm" variant="outline">
@@ -346,40 +339,15 @@ export function ReviewQueue({
                     </Link>
                   </Button>
                 )}
-                {(question.verificationStatus === "draft" ||
-                  question.verificationStatus === "rejected") && (
-                  <Button
-                    disabled={pending}
-                    onClick={() => lifecycle(question.id, "submit_review")}
-                    size="sm"
-                    variant="secondary"
-                  >
-                    <Send className="h-4 w-4" />
-                    Submit for review
-                  </Button>
-                )}
-                {question.verificationStatus === "approved" &&
-                question.publicationStatus !== "published" ? (
-                  <Button
-                    disabled={pending}
-                    onClick={() => lifecycle(question.id, "publish")}
-                    size="sm"
-                  >
-                    <ShieldCheck className="h-4 w-4" />
-                    Publish
-                  </Button>
-                ) : null}
-                {question.publicationStatus === "published" ? (
-                  <Button
-                    disabled={pending}
-                    onClick={() => lifecycle(question.id, "retire")}
-                    size="sm"
-                    variant="outline"
-                  >
-                    <CircleOff className="h-4 w-4" />
-                    Retire
-                  </Button>
-                ) : null}
+                <Button
+                  disabled={pending}
+                  onClick={() => setDeleteTarget(question)}
+                  size="sm"
+                  variant="destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete question
+                </Button>
               </div>
             ) : null}
           </CardContent>
@@ -389,10 +357,29 @@ export function ReviewQueue({
       {!visible.length ? (
         <Card className="border-dashed">
           <CardContent className="p-8 text-center text-sm text-slate-600">
-            No questions match this review status.
+            No questions match the current filters.
           </CardContent>
         </Card>
       ) : null}
+
+      <Dialog
+        onOpenChange={(open) => { if (!open && !pending) setDeleteTarget(null); }}
+        open={Boolean(deleteTarget)}
+        title="Delete this question?"
+      >
+        <div className="space-y-5">
+          <p className="text-sm leading-6 text-on-surface-variant">
+            This removes it from the active question bank and from all new Practice and Mock selections. Existing attempts remain available through their immutable snapshots.
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button disabled={pending} onClick={() => setDeleteTarget(null)} variant="outline">Cancel</Button>
+            <Button disabled={pending} onClick={removeQuestion} variant="destructive">
+              <Trash2 className="h-4 w-4" />
+              {pending ? "Deleting…" : "Delete question"}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 }

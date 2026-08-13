@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { fingerprintLatinSquare } from "./fingerprint";
+import { analyzeLatinDeductions, calculateLatinDifficulty } from "./difficulty";
 import { generateValidatedLatinSquare } from "./pipeline";
 
 describe("validated Latin-square pipeline", () => {
@@ -16,6 +17,27 @@ describe("validated Latin-square pipeline", () => {
       expect(question.validation.checks.every((check) => check.passed)).toBe(true);
       expect(question.deductionTrace.length).toBeGreaterThan(0);
       expect(question.explanation).toContain(`Put ${question.correctAnswer}`);
+      expect(question.explanation).not.toMatch(/[{}\[\]]/);
+      const analysis = analyzeLatinDeductions(question);
+      const calculated = calculateLatinDifficulty(question, analysis);
+      if (difficulty === "easy") {
+        expect(calculated?.metrics.classification).not.toBe("multi_stage");
+      } else {
+        expect(calculated?.metrics.classification).toBe(
+          difficulty === "medium" ? "indirect" : "multi_stage",
+        );
+      }
+      for (const deduction of question.deductionTrace) {
+        const deductionIndex = question.deductionTrace.indexOf(deduction);
+        for (const dependency of deduction.dependencies) {
+          const dependencyIndex = question.deductionTrace.findIndex((entry) =>
+            entry.coordinate.row === dependency.row &&
+            entry.coordinate.column === dependency.column,
+          );
+          expect(dependencyIndex).toBeGreaterThanOrEqual(0);
+          expect(dependencyIndex).toBeLessThan(deductionIndex);
+        }
+      }
     },
     30_000,
   );

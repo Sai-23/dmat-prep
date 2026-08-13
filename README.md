@@ -1,6 +1,6 @@
 # dMAT Prep
 
-dMAT Prep is an independent preparation platform for students preparing for the Digital Master Test, starting with the Computer Science subject module.
+dMAT Prep is an independent preparation platform for the Digital Master Test Core Module: Figure Sequences, Mathematical Equations, and Latin Squares.
 
 > dMAT Prep is an independent preparation platform and is not affiliated with or endorsed by the official dMAT examination authorities.
 
@@ -89,7 +89,7 @@ Supabase configuration lives in `supabase/config.toml`, and the initial schema i
 
 Focused practice is implemented with a server-authorized data flow:
 
-- Configurable module, question type, topic, difficulty, source, quantity, and timing
+- Configurable Core question type, topic, difficulty, source, quantity, and timing
 - Randomized selection from approved, published questions
 - Persisted practice attempts and per-question responses
 - Immediate correctness feedback and explanations after submission
@@ -128,7 +128,7 @@ Completed attempts now have secure, detailed result views:
 Bookmarks and mistake-driven revision are implemented:
 
 - Bookmark toggles from completed result reviews and mistake entries
-- Searchable bookmark library with module and difficulty filters
+- Searchable bookmark library with difficulty filters
 - Automatically derived mistake notebook from submitted incorrect responses
 - Repeated-mistake counts and latest incorrect-answer context
 - Personal notes and understood/needs-review state
@@ -154,8 +154,8 @@ The role-protected question content pipeline is implemented:
 The role-protected assessment builder is implemented:
 
 - Draft and direct-publication workflows for diagnostics, sectional tests, mini mocks, and full mocks
-- Multi-section configuration with per-section modules and timing
-- Searchable approved-question bank with module and difficulty filtering
+- Multi-section configuration with per-section Core question types and timing
+- Searchable approved-question bank with question-type and difficulty filtering
 - Unique question assignment and explicit section/question ordering
 - Free or premium access controls and question/option randomization settings
 - Draft editing before attempts exist

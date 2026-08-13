@@ -1,5 +1,8 @@
 import type { ValidationCheck, ValidationIssue } from "../types";
-import { fingerprintMathematicalEquation } from "./fingerprint";
+import {
+  fingerprintMathematicalEquation,
+  mathematicalEquationStructuralSignature,
+} from "./fingerprint";
 import { mathematicalEquationGenerator } from "./generator";
 import {
   MATHEMATICAL_EQUATION_VALIDATOR_VERSION,
@@ -88,6 +91,7 @@ export function reproduceValidatedMathematicalEquation(
 export function generateValidatedMathematicalEquation(
   configuration: MathematicalEquationGenerationConfiguration,
   acceptedFingerprints: ReadonlySet<string> = new Set(),
+  acceptedStructuralSignatures: ReadonlySet<string> = new Set(),
 ): MathematicalEquationQuestion {
   const maxAttempts = configuration.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
   if (!Number.isSafeInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > MAX_GENERATION_ATTEMPTS) {
@@ -108,16 +112,26 @@ export function generateValidatedMathematicalEquation(
     }
 
     const fingerprint = question.metadata.fingerprint;
-    const duplicate = acceptedFingerprints.has(fingerprint);
+    const structuralSignature = mathematicalEquationStructuralSignature(question);
+    const duplicate = acceptedFingerprints.has(fingerprint) ||
+      acceptedStructuralSignatures.has(structuralSignature);
     if (duplicate) {
-      lastIssues = [{ stage: "duplicate", code: "duplicate_fingerprint", message: "The candidate duplicates accepted semantic structure." }];
+      lastIssues = [{
+        stage: "duplicate",
+        code: acceptedFingerprints.has(fingerprint)
+          ? "duplicate_fingerprint"
+          : "duplicate_structural_signature",
+        message: acceptedFingerprints.has(fingerprint)
+          ? "The candidate duplicates an accepted equation system."
+          : "The candidate is structurally equivalent to an accepted equation system.",
+      }];
       continue;
     }
     const duplicateCheck: ValidationCheck = {
       stage: "duplicate",
       passed: true,
       validatorVersion: MATHEMATICAL_EQUATION_VALIDATOR_VERSION,
-      details: { fingerprint },
+      details: { fingerprint, structuralSignature },
     };
     return {
       ...question,

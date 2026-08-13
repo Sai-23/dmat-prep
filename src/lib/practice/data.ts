@@ -55,20 +55,21 @@ export async function getPracticeFilters(): Promise<PracticeFilters> {
   const { data, error } = await admin
     .from("questions")
     .select("module, topic")
+    .eq("module", "core")
     .eq("verification_status", "approved")
-    .eq("publication_status", "published");
+    .eq("publication_status", "published")
+    .is("deleted_at", null);
 
   if (error) throw new Error("Unable to load practice filters.");
 
   const topicsByModule: PracticeFilters["topicsByModule"] = {
     core: [],
-    computer_science: [],
   };
 
   for (const row of data ?? []) {
     const questionModule = row.module as PracticeQuestion["module"];
     if (
-      (questionModule === "core" || questionModule === "computer_science") &&
+      questionModule === "core" &&
       typeof row.topic === "string" &&
       !topicsByModule[questionModule].includes(row.topic)
     ) {
@@ -77,7 +78,6 @@ export async function getPracticeFilters(): Promise<PracticeFilters> {
   }
 
   topicsByModule.core.sort();
-  topicsByModule.computer_science.sort();
   return { topicsByModule };
 }
 
@@ -93,7 +93,8 @@ export async function createPracticeAttempt(
     )
     .eq("module", config.module)
     .eq("verification_status", "approved")
-    .eq("publication_status", "published");
+    .eq("publication_status", "published")
+    .is("deleted_at", null);
 
   if (config.questionId) query = query.eq("id", config.questionId);
   if (config.questionType !== "any") {
@@ -283,6 +284,7 @@ export async function recordPracticeAnswer(
     isCorrect,
     correctAnswer: privateSnapshot.correctAnswer,
     explanation: privateSnapshot.explanation,
+    explanationTrace: privateSnapshot.explanationTrace,
     timeSpentSeconds,
     targetPaceSeconds: practiceTargetPaceSeconds((item.public_snapshot as PracticeQuestion).estimatedTimeSeconds),
   };
@@ -385,7 +387,8 @@ export async function finishPracticeAttempt(
   const { data: questions, error: questionError } = await admin
     .from("questions")
     .select("id, module, topic, subtopic")
-    .in("id", questionIds);
+    .in("id", questionIds)
+    .eq("module", "core");
 
   if (questionError) throw new Error("Unable to update topic performance.");
 

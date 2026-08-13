@@ -25,7 +25,6 @@ export const answerSubmissionSchema = z.object({
     z.object({ kind: z.literal("single_choice"), optionId: z.string().min(1).max(200) }),
     z.object({ kind: z.literal("symbol_assignment"), values: z.record(z.string().regex(/^[A-Z]$/), z.number().int().min(1).max(20)) }),
     z.object({ kind: z.literal("two_stage_single_choice"), optionIds: z.tuple([z.string().min(1), z.string().min(1)]) }),
-    z.object({ kind: z.literal("subject_answers"), answers: z.record(z.string().min(1), z.string().min(1)) }),
   ]),
 });
 
@@ -68,8 +67,7 @@ export type PracticeQuestion = {
 export type PracticeResponse =
   | { kind: "single_choice"; options: Array<{ id: string; label: string; content: string }> }
   | { kind: "symbol_assignment"; symbols: string[] }
-  | { kind: "two_stage_single_choice" }
-  | { kind: "subject_answers" };
+  | { kind: "two_stage_single_choice" };
 
 export type PracticeAnswer = z.infer<typeof answerSubmissionSchema>["answer"];
 

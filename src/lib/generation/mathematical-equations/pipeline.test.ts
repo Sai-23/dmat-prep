@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { fingerprintMathematicalEquation } from "./fingerprint";
+import {
+  fingerprintMathematicalEquation,
+  mathematicalEquationStructuralSignature,
+} from "./fingerprint";
 import { mathematicalEquationGenerator } from "./generator";
 import {
   generateValidatedMathematicalEquation,
@@ -53,6 +56,19 @@ describe("validated mathematical-equation pipeline", () => {
     ).toThrow(MathematicalEquationGenerationError);
   });
 
+  it("can reject a near-identical canonical structure during batch generation", () => {
+    const configuration = { seed: "structural-retry", difficulty: "medium" as const, maxAttempts: 100 };
+    const first = mathematicalEquationGenerator.generate(configuration, 1);
+    const signature = mathematicalEquationStructuralSignature(first);
+    const question = generateValidatedMathematicalEquation(
+      configuration,
+      new Set(),
+      new Set([signature]),
+    );
+    expect(question.metadata.attemptCount).toBeGreaterThan(1);
+    expect(mathematicalEquationStructuralSignature(question)).not.toBe(signature);
+  });
+
   it("rejects unbounded attempt configurations", () => {
     expect(() =>
       generateValidatedMathematicalEquation({
@@ -63,4 +79,3 @@ describe("validated mathematical-equation pipeline", () => {
     ).toThrow(RangeError);
   });
 });
-

@@ -17,14 +17,11 @@ export default async function PracticePage({
   )
     ? query.question
     : undefined;
-  const validModule =
-    query.module === "core" || query.module === "computer_science"
-      ? query.module
-      : undefined;
+  const validModule = query.module === "core" ? query.module : undefined;
   const initialConfig: Partial<PracticeConfig> | undefined = validQuestionId
     ? {
         questionId: validQuestionId,
-        module: validModule ?? "computer_science",
+        module: validModule ?? "core",
         quantity: 1,
         timingMode: "untimed",
       }

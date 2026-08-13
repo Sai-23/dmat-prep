@@ -21,12 +21,6 @@ const sections = [
       "5×5 grid reasoning with controlled cell removal, permutation logic, and single-answer guarantees.",
     badges: ["Core Module", "Constraint logic", "Uniqueness"],
   },
-  {
-    title: "Computer Science",
-    description:
-      "Scenario-based reasoning across algorithms, systems, networks, software engineering, databases, and discrete mathematics.",
-    badges: ["Subject module", "Application-first", "Scenario-based"],
-  },
 ];
 
 export default function ExamFormatPage() {
@@ -35,7 +29,7 @@ export default function ExamFormatPage() {
       <SectionHeading
         eyebrow="Exam format"
         title="Understand the structure before you start preparing"
-        description="The dMAT Prep foundation supports both the Core Module and the Computer Science subject module with a scalable question and test architecture."
+        description="dMAT Prep supports the Core Module with dedicated question and test architecture for its three question types."
       />
       <div className="grid gap-5 md:grid-cols-2">
         {sections.map((section) => (

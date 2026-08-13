@@ -2,7 +2,7 @@
 
 ## Official structure source
 
-The Computer Science preparatory materials dated 8 January 2025 define three independently timed Core subtests: Figure Sequences (20 tasks, 25 minutes), Mathematical Equations (20 systems, 25 minutes), and Latin Squares (20 tasks, 25 minutes). The Computer Science Subject Module uses stimulus-plus-related single-choice questions and has 90 minutes total. The official source does not state a fixed Subject Module question count, so the platform does not invent one.
+The preparatory materials dated 8 January 2025 define three independently timed Core subtests: Figure Sequences (20 tasks, 25 minutes), Mathematical Equations (20 systems, 25 minutes), and Latin Squares (20 tasks, 25 minutes). The platform’s full mock gate contains exactly those three Core sections.
 
 ## Attempt lifecycle
 
@@ -18,6 +18,4 @@ An assembly failure never starts the clock. Active delivery, grading, and result
 
 Core subtests are contiguous and independently enforced from the server-owned attempt start time. Closing the tab does not stop time. The server rejects writes outside the active section and auto-finalizes the attempt when the complete schedule has expired. Browser payloads contain public snapshots only; private snapshots, correct answers, explanations, and provenance remain server-only until post-submission review.
 
-## Known official ambiguity
-
-The supplied material says the exam itself lasts about three hours and specifies a 30-minute break between modules, while the explicitly stated working times sum to 165 minutes. Q5 enforces the stated task working times. It does not implement a simulated 30-minute waiting break because that is test-center procedure rather than question-working time.
+The Core working sections total 75 minutes. Test-center procedures outside those working sections are not simulated.

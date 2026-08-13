@@ -21,6 +21,8 @@ import {
 import type { ResultQuestion } from "@/lib/results/schemas";
 import { NativePracticeResponse } from "@/components/practice/native-practice-response";
 import { PracticeAnswerFeedback } from "@/components/practice/practice-answer-feedback";
+import { MathematicalEquationPracticeFeedback } from "@/components/practice/mathematical-equation-practice-feedback";
+import type { MathematicalEquationStructuredData } from "@/lib/generation/mathematical-equations";
 
 type ReviewFilter = "all" | "correct" | "incorrect" | "unanswered" | "marked";
 
@@ -116,6 +118,12 @@ export function ResultReview({ questions }: { questions: ResultQuestion[] }) {
           const correctOption = question.options.find(
             (option) => option.id === question.correctOptionId,
           );
+          const equationReview =
+            question.questionType === "mathematical_equation" &&
+            question.response?.kind === "symbol_assignment";
+          const equationAnswer = question.answer?.kind === "symbol_assignment"
+            ? question.answer.values
+            : {};
 
           return (
             <Card
@@ -207,7 +215,18 @@ export function ResultReview({ questions }: { questions: ResultQuestion[] }) {
                   </div>
                 ) : null}
 
-                {question.response?.kind && question.response.kind !== "single_choice" ? (
+                {equationReview ? (
+                  <MathematicalEquationPracticeFeedback
+                    correctAnswer={question.correctAnswer}
+                    data={question.structuredData as MathematicalEquationStructuredData}
+                    initiallyOpen
+                    initialView="all"
+                    isCorrect={question.isCorrect}
+                    selectedAnswer={equationAnswer}
+                    showOutcomeHeader={false}
+                    trace={question.explanationTrace}
+                  />
+                ) : question.response?.kind && question.response.kind !== "single_choice" ? (
                   <div className="space-y-4">
                     <NativePracticeResponse answer={question.answer ?? null} correctAnswer={question.correctAnswer} disabled onChange={() => undefined} question={{ ...question, estimatedTimeSeconds: 1, imageUrl: null, tableData: null }} />
                     <PracticeAnswerFeedback answer={question.answer ?? null} correctAnswer={question.correctAnswer} question={{ ...question, estimatedTimeSeconds: 1, imageUrl: null, tableData: null }} />
@@ -248,7 +267,8 @@ export function ResultReview({ questions }: { questions: ResultQuestion[] }) {
                   })}
                 </div>}
 
-                <div className="rounded-md bg-surface-low p-5">
+                {equationReview ? null : (
+                  <div className="rounded-md bg-surface-low p-5">
                   <p className="font-semibold text-on-surface">Explanation</p>
                   <p className="mt-2 text-sm leading-7 text-on-surface-variant">
                     {question.explanation}
@@ -257,7 +277,8 @@ export function ResultReview({ questions }: { questions: ResultQuestion[] }) {
                     Your response: {selectedOption?.label ?? "No answer"} · Correct:{" "}
                     {correctOption?.label ?? "Unavailable"}
                   </p>
-                </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           );

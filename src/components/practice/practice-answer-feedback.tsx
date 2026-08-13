@@ -1,6 +1,7 @@
 import { Check, X } from "lucide-react";
 
 import { FigureMatrixSvg } from "../questions/figure-matrix-svg";
+import { MathematicalEquationAnswerReview } from "./mathematical-equation-answer-review";
 import type { FigureSequencePresentation } from "../../lib/generation";
 import type { PracticeAnswer, PracticeQuestion } from "../../lib/practice/schemas";
 
@@ -9,34 +10,14 @@ export function PracticeAnswerFeedback({ question, answer, correctAnswer }: {
   answer: PracticeAnswer | null;
   correctAnswer: unknown;
 }) {
-  if (
-    question.response?.kind === "symbol_assignment" &&
-    answer?.kind === "symbol_assignment" &&
-    correctAnswer && typeof correctAnswer === "object" && !Array.isArray(correctAnswer)
-  ) {
-    const expected = correctAnswer as Record<string, unknown>;
+  if (question.response?.kind === "symbol_assignment") {
+    const selectedAnswer = answer?.kind === "symbol_assignment" ? answer.values : {};
     return (
-      <div className="grid gap-3" data-feedback-interface="equation-variable-values">
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3 text-xs font-semibold uppercase tracking-wide">
-          <span>Your answer</span><span>Correct answer</span>
-        </div>
-        {question.response.symbols.map((symbol) => {
-          const submitted = answer.values[symbol];
-          const correct = submitted === expected[symbol];
-          return (
-            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3" key={symbol}>
-              <div className={correct ? "flex items-center justify-between rounded-md border border-success bg-success-container p-3" : "flex items-center justify-between rounded-md border border-error bg-error-container p-3"}>
-                <span className="font-mono font-semibold">{symbol} = {submitted ?? "Unanswered"}</span>
-                {correct ? <Check aria-label="Correct" className="h-4 w-4 text-success" /> : <X aria-label="Incorrect" className="h-4 w-4 text-error" />}
-              </div>
-              <div className="flex items-center justify-between rounded-md border border-success bg-success-container p-3">
-                <span className="font-mono font-semibold">{symbol} = {String(expected[symbol] ?? "Unavailable")}</span>
-                <Check aria-label="Correct value" className="h-4 w-4 text-success" />
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <MathematicalEquationAnswerReview
+        correctAnswer={correctAnswer}
+        selectedAnswer={selectedAnswer}
+        symbols={question.response.symbols}
+      />
     );
   }
 

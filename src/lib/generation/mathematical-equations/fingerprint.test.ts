@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { fingerprintMathematicalEquation } from "./fingerprint";
+import {
+  fingerprintMathematicalEquation,
+  mathematicalEquationStructuralSignature,
+} from "./fingerprint";
 import { mathematicalEquationGenerator } from "./generator";
 import type { MathematicalExpression } from "./types";
 
 function incrementFirstConstant(expression: MathematicalExpression): boolean {
-  if (expression.kind === "constant") {
-    expression.value += 1;
-    return true;
-  }
+  if (expression.kind === "constant") { expression.value += 1; return true; }
   if (expression.kind === "variable") return false;
   return incrementFirstConstant(expression.left) || incrementFirstConstant(expression.right);
 }
@@ -28,7 +28,7 @@ describe("mathematical-equation fingerprints", () => {
     );
   });
 
-  it("changes when semantic constants change", () => {
+  it("changes semantic and structural fingerprints when constants change", () => {
     const candidate = mathematicalEquationGenerator.generate(
       { seed: "fingerprint-change", difficulty: "easy" },
       1,
@@ -40,6 +40,21 @@ describe("mathematical-equation fingerprints", () => {
     ).toBe(true);
     expect(fingerprintMathematicalEquation(changed)).not.toBe(
       fingerprintMathematicalEquation(candidate),
+    );
+    expect(mathematicalEquationStructuralSignature(changed)).not.toBe(
+      mathematicalEquationStructuralSignature(candidate),
+    );
+  });
+
+  it("retains the normalized solve path in the structural signature", () => {
+    const candidate = mathematicalEquationGenerator.generate(
+      { seed: "fingerprint-path", difficulty: "hard" },
+      1,
+    );
+    const changed = structuredClone(candidate);
+    changed.solutionPath[1].reasoning = "combine_equations";
+    expect(mathematicalEquationStructuralSignature(changed)).not.toBe(
+      mathematicalEquationStructuralSignature(candidate),
     );
   });
 });

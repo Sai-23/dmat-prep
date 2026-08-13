@@ -55,7 +55,7 @@ describe("native response rendering", () => {
 
   it("keeps a normal four-option question on the generic MCQ interface", () => {
     const question: PracticeQuestion = {
-      ...latinQuestion, id: "cs", module: "computer_science", questionType: "computer_science",
+      ...latinQuestion, id: "generic", module: "core", questionType: "mathematical_equation",
       structuredData: undefined,
       response: { kind: "single_choice", options: symbols.slice(0, 4).map((symbol) => ({ id: symbol, label: symbol, content: `Option ${symbol}` })) },
       options: symbols.slice(0, 4).map((symbol) => ({ id: symbol, label: symbol, content: `Option ${symbol}` })),

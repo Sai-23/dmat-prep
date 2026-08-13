@@ -9,9 +9,9 @@ describe("practice validation", () => {
   it("accepts a valid focused practice configuration", () => {
     expect(
       practiceConfigSchema.safeParse({
-        module: "computer_science",
-        questionType: "computer_science",
-        topic: "Algorithms",
+        module: "core",
+        questionType: "mathematical_equation",
+        topic: "Equations",
         difficulty: "medium",
         sourceType: "manual",
         quantity: 10,
@@ -48,7 +48,6 @@ describe("practice validation", () => {
     { kind: "single_choice", optionId: "choice-a" },
     { kind: "symbol_assignment", values: { A: 2, B: 7 } },
     { kind: "two_stage_single_choice", optionIds: ["first", "second"] },
-    { kind: "subject_answers", answers: { child1: "a", child2: "d" } },
   ])("accepts the native $kind response", (answer) => {
     expect(answerSubmissionSchema.safeParse({
       attemptId: "11111111-1111-4111-8111-111111111111",

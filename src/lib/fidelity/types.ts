@@ -15,7 +15,7 @@ export type FidelityScores = Record<FidelityScoreField, number>;
 
 export type FidelityAuditSample = {
   sampleId: string;
-  questionType: Exclude<GeneratedQuestionType, "computer_science">;
+  questionType: GeneratedQuestionType;
   difficulty: GenerationDifficulty;
   seed: string;
   generatorVersion: string;

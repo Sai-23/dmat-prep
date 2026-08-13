@@ -141,6 +141,7 @@ export async function getAttemptResult(
       const response = responseById.get(item.source_question_id);
       if (!response) return [];
       const question = item.public_snapshot as PracticeQuestion;
+      if (question.module !== "core") return [];
       const privateSnapshot = item.private_snapshot as PrivatePracticeSnapshot;
       const answer = response.response_payload as PracticeAnswer | null;
       const selectedOptionId = answer?.kind === "single_choice" ? answer.optionId : response.selected_option_id;
@@ -157,6 +158,7 @@ export async function getAttemptResult(
         timeSpentSeconds: response.time_spent_seconds,
         answer,
         correctAnswer: privateSnapshot.correctAnswer,
+        explanationTrace: privateSnapshot.explanationTrace,
       }];
     });
     const correctCount = resultQuestions.filter((question) => question.isCorrect).length;
@@ -187,7 +189,8 @@ export async function getAttemptResult(
       .select(
         "id, module, question_type, topic, subtopic, difficulty, question_text, passage, code, formula, correct_option_id, explanation",
       )
-      .in("id", questionIds),
+      .in("id", questionIds)
+      .eq("module", "core"),
     admin
       .from("question_options")
       .select("id, question_id, label, content, sort_order")

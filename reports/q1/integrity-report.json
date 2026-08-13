@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "audit": "Q1-generator-integrity",
-  "generatedAt": "2026-08-08T16:27:00.460Z",
+  "generatedAt": "2026-08-09T10:51:14.112Z",
   "seedsPerDifficulty": 10000,
   "databaseWrites": 0,
   "acceptanceCriterion": {
     "acceptedInvalidMustEqual": 0
   },
   "adversarial": {
-    "attempted": 20,
-    "rejected": 20,
+    "attempted": 16,
+    "rejected": 16,
     "rejectionRate": 1
   },
   "results": [
@@ -31,10 +31,10 @@
       "solverMismatchCount": 0,
       "determinismFailures": 0,
       "latencyMilliseconds": {
-        "mean": 0.108,
-        "median": 0.083,
-        "p95": 0.194,
-        "maximum": 2.302
+        "mean": 0.113,
+        "median": 0.085,
+        "p95": 0.211,
+        "maximum": 2.542
       },
       "distribution": {
         "variables:2": 10000,
@@ -59,10 +59,10 @@
       "solverMismatchCount": 0,
       "determinismFailures": 0,
       "latencyMilliseconds": {
-        "mean": 0.31,
-        "median": 0.265,
-        "p95": 0.635,
-        "maximum": 2.074
+        "mean": 0.345,
+        "median": 0.28,
+        "p95": 0.674,
+        "maximum": 48.306
       },
       "distribution": {
         "variables:3": 10000,
@@ -87,10 +87,10 @@
       "solverMismatchCount": 0,
       "determinismFailures": 0,
       "latencyMilliseconds": {
-        "mean": 2.551,
-        "median": 1.831,
-        "p95": 6.228,
-        "maximum": 34.059
+        "mean": 2.016,
+        "median": 1.786,
+        "p95": 3.335,
+        "maximum": 25.639
       },
       "distribution": {
         "variables:4": 10000,
@@ -115,10 +115,10 @@
       "solverMismatchCount": 0,
       "determinismFailures": 0,
       "latencyMilliseconds": {
-        "mean": 0.68,
-        "median": 0.461,
-        "p95": 2.04,
-        "maximum": 9.72
+        "mean": 0.686,
+        "median": 0.468,
+        "p95": 2.048,
+        "maximum": 7.656
       },
       "distribution": {
         "deductions:9": 2692,
@@ -148,10 +148,10 @@
       "solverMismatchCount": 0,
       "determinismFailures": 0,
       "latencyMilliseconds": {
-        "mean": 0.693,
-        "median": 0.487,
-        "p95": 1.984,
-        "maximum": 7.409
+        "mean": 0.736,
+        "median": 0.508,
+        "p95": 2.059,
+        "maximum": 45.178
       },
       "distribution": {
         "deductions:15": 1376,
@@ -183,10 +183,10 @@
       "solverMismatchCount": 0,
       "determinismFailures": 0,
       "latencyMilliseconds": {
-        "mean": 1.882,
-        "median": 1.327,
-        "p95": 5.417,
-        "maximum": 17.019
+        "mean": 1.874,
+        "median": 1.319,
+        "p95": 5.411,
+        "maximum": 30.837
       },
       "distribution": {
         "deductions:16": 5996,
@@ -217,10 +217,10 @@
       "solverMismatchCount": 0,
       "determinismFailures": 0,
       "latencyMilliseconds": {
-        "mean": 0.287,
-        "median": 0.239,
-        "p95": 0.547,
-        "maximum": 2.172
+        "mean": 0.28,
+        "median": 0.241,
+        "p95": 0.485,
+        "maximum": 2.679
       },
       "distribution": {
         "movement:border": 4906,
@@ -247,10 +247,10 @@
       "solverMismatchCount": 0,
       "determinismFailures": 0,
       "latencyMilliseconds": {
-        "mean": 0.521,
-        "median": 0.441,
-        "p95": 0.932,
-        "maximum": 3.731
+        "mean": 0.526,
+        "median": 0.453,
+        "p95": 0.877,
+        "maximum": 2.402
       },
       "distribution": {
         "movement:linear": 10000,
@@ -278,10 +278,10 @@
       "solverMismatchCount": 0,
       "determinismFailures": 0,
       "latencyMilliseconds": {
-        "mean": 1.014,
-        "median": 0.599,
-        "p95": 2.652,
-        "maximum": 41.072
+        "mean": 0.607,
+        "median": 0.527,
+        "p95": 1.043,
+        "maximum": 41.871
       },
       "distribution": {
         "movement:linear": 10000,
@@ -290,90 +290,6 @@
         "movement:direction_cycle": 10000,
         "rotation:none": 10000,
         "colour:fixed": 10000
-      }
-    },
-    {
-      "generator": "computer-science-boolean",
-      "difficulty": "easy",
-      "requestedGenerationCount": 10000,
-      "acceptedCount": 10000,
-      "rejectedCandidateCount": 3207,
-      "generationAttempts": 13207,
-      "generationFailures": 0,
-      "solverFailures": 0,
-      "validatorFailures": 3207,
-      "difficultyMismatches": 0,
-      "duplicateFingerprints": 9988,
-      "duplicateRate": 0.999,
-      "unexpectedExceptions": 0,
-      "acceptedInvalidCount": 0,
-      "solverMismatchCount": 0,
-      "determinismFailures": 0,
-      "latencyMilliseconds": {
-        "mean": 0.095,
-        "median": 0.068,
-        "p95": 0.202,
-        "maximum": 2.426
-      },
-      "distribution": {
-        "variables:2": 10000,
-        "expressions:2": 10000
-      }
-    },
-    {
-      "generator": "computer-science-boolean",
-      "difficulty": "medium",
-      "requestedGenerationCount": 10000,
-      "acceptedCount": 10000,
-      "rejectedCandidateCount": 740,
-      "generationAttempts": 10740,
-      "generationFailures": 0,
-      "solverFailures": 0,
-      "validatorFailures": 740,
-      "difficultyMismatches": 0,
-      "duplicateFingerprints": 9760,
-      "duplicateRate": 0.976,
-      "unexpectedExceptions": 0,
-      "acceptedInvalidCount": 0,
-      "solverMismatchCount": 0,
-      "determinismFailures": 0,
-      "latencyMilliseconds": {
-        "mean": 0.114,
-        "median": 0.088,
-        "p95": 0.223,
-        "maximum": 1.833
-      },
-      "distribution": {
-        "variables:3": 10000,
-        "expressions:2": 10000
-      }
-    },
-    {
-      "generator": "computer-science-boolean",
-      "difficulty": "hard",
-      "requestedGenerationCount": 10000,
-      "acceptedCount": 10000,
-      "rejectedCandidateCount": 159,
-      "generationAttempts": 10159,
-      "generationFailures": 0,
-      "solverFailures": 0,
-      "validatorFailures": 159,
-      "difficultyMismatches": 0,
-      "duplicateFingerprints": 6308,
-      "duplicateRate": 0.631,
-      "unexpectedExceptions": 0,
-      "acceptedInvalidCount": 0,
-      "solverMismatchCount": 0,
-      "determinismFailures": 0,
-      "latencyMilliseconds": {
-        "mean": 0.132,
-        "median": 0.104,
-        "p95": 0.257,
-        "maximum": 2.9
-      },
-      "distribution": {
-        "variables:3": 10000,
-        "expressions:2": 10000
       }
     }
   ]

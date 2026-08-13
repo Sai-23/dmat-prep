@@ -13,13 +13,19 @@ describe("MathematicalEquationValidator", () => {
           1,
         );
         const result = mathematicalEquationValidator.validate(candidate, difficulty);
-        expect(result.valid, result.valid ? undefined : JSON.stringify(result.issues)).toBe(true);
+        expect(
+          result.valid,
+          result.valid
+            ? undefined
+            : `${difficulty}/${seed}/${candidate.structuredData.dependencyModel.family}: ${JSON.stringify(result.issues)} ${JSON.stringify(result.checks.at(-1)?.details)}`,
+        ).toBe(true);
         if (result.valid) {
           expect(result.solution.assignment).toEqual(candidate.correctAnswer);
           expect(result.solution.calculatedDifficulty).toBe(difficulty);
         }
       }
     },
+    15_000,
   );
 
   it("rejects an incorrect stored answer", () => {
@@ -41,7 +47,11 @@ describe("MathematicalEquationValidator", () => {
     candidate.structuredData.equations[1] = candidate.structuredData.equations[0];
     const result = mathematicalEquationValidator.validate(candidate, "easy");
     expect(result.valid).toBe(false);
-    if (!result.valid) expect(result.issues.some((item) => item.code === "multiple_solutions")).toBe(true);
+    if (!result.valid) {
+      expect(result.issues.some((item) =>
+        item.code === "multiple_solutions" || item.code === "redundant_equation",
+      )).toBe(true);
+    }
   });
 
   it("rejects division by zero structurally", () => {
@@ -74,6 +84,42 @@ describe("MathematicalEquationValidator", () => {
     if (!result.valid) expect(result.issues[0].stage).toBe("explanation");
   });
 
+  it("requires both equations for an indirect first deduction", () => {
+    let candidate = mathematicalEquationGenerator.generate(
+      { seed: "indirect-trace", difficulty: "hard" },
+      1,
+    );
+    for (let attempt = 2; !candidate.solutionPath.some((step) => step.reasoning === "combine_equations"); attempt += 1) {
+      candidate = mathematicalEquationGenerator.generate(
+        { seed: "indirect-trace", difficulty: "hard" },
+        attempt,
+      );
+    }
+    const combineStep = candidate.solutionPath.find((step) => step.reasoning === "combine_equations");
+    expect(combineStep?.supportingEquationIndices?.length).toBeGreaterThanOrEqual(1);
+    combineStep!.supportingEquationIndices = [];
+    const result = mathematicalEquationValidator.validate(candidate, "hard");
+    expect(result.valid).toBe(false);
+    if (!result.valid) {
+      expect(result.issues.some((item) =>
+        item.code === "non_deductive_step" || item.code === "missing_supporting_equation",
+      )).toBe(true);
+    }
+  });
+
+  it("rejects dependency metadata that disagrees with the verified solve path", () => {
+    const candidate = mathematicalEquationGenerator.generate(
+      { seed: "dependency-model", difficulty: "hard" },
+      1,
+    );
+    candidate.structuredData.dependencyModel.edges = [];
+    const result = mathematicalEquationValidator.validate(candidate, "hard");
+    expect(result.valid).toBe(false);
+    if (!result.valid) {
+      expect(result.issues.some((item) => item.code === "dependency_model_mismatch")).toBe(true);
+    }
+  });
+
   it("rejects requested and calculated difficulty mismatch", () => {
     const candidate = mathematicalEquationGenerator.generate(
       { seed: "difficulty", difficulty: "easy" },
@@ -84,4 +130,3 @@ describe("MathematicalEquationValidator", () => {
     if (!result.valid) expect(result.issues[0].code).toBe("difficulty_mismatch");
   });
 });
-

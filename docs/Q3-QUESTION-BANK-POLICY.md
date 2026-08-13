@@ -13,8 +13,6 @@ Publication is server-gated. Approval alone is insufficient.
 - Generated Mathematical Equations require a validated `symbol_assignment` response.
 - Generated Latin Squares require a validated five-symbol `single_choice` response.
 - Generated Figure Sequences require two validated candidate stages.
-- Generated Computer Science units require one or more child questions, each with four options
-  and exactly one referenced correct option.
 - Manual/imported conventional content retains the database four-option and correct-option
   requirements.
 

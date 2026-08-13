@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { QUESTION_TYPES } from "@/types/questions";
 import { buildItemCalibration, groupEmpiricalMetrics, type AnalyticsResponse, type AttemptContext, type ResponseOutcome } from "./calibration";
 
 type AnalyticsRow = {
@@ -44,7 +45,7 @@ export async function getAnalyticsResponses(): Promise<AnalyticsResponse[]> {
   const rows: AnalyticsRow[] = [];
   const pageSize = 1_000;
   for (let from = 0; ; from += pageSize) {
-    const { data, error } = await admin.from("admin_response_analytics").select("*").order("attempted_at", { ascending: false }).range(from, from + pageSize - 1);
+    const { data, error } = await admin.from("admin_response_analytics").select("*").in("question_type", [...QUESTION_TYPES]).order("attempted_at", { ascending: false }).range(from, from + pageSize - 1);
     if (error) throw new Error("Unable to load empirical response analytics. Apply the Q7 database migration first.");
     rows.push(...((data ?? []) as AnalyticsRow[]));
     if (!data || data.length < pageSize) break;

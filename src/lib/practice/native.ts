@@ -13,6 +13,7 @@ type Source = Omit<PracticeQuestion, "structuredData" | "response" | "options"> 
 export type PrivatePracticeSnapshot = {
   correctAnswer: unknown;
   explanation: string;
+  explanationTrace?: unknown;
   provenance: Record<string, unknown>;
 };
 
@@ -27,6 +28,7 @@ export function createPracticeSnapshots(source: Source): { publicQuestion: Pract
   let structuredData: unknown = {};
   let response: PracticeResponse;
   let correctAnswer: unknown;
+  let explanationTrace: unknown;
 
   if (source.sourceType !== "generated") {
     response = { kind: "single_choice", options: source.options };
@@ -36,6 +38,7 @@ export function createPracticeSnapshots(source: Source): { publicQuestion: Pract
     structuredData = stored.task;
     response = { kind: "symbol_assignment", symbols: Array.isArray(specification?.symbols) ? specification.symbols.filter((item): item is string => typeof item === "string") : [] };
     correctAnswer = metadata.correctAnswer;
+    explanationTrace = structuredClone(stored.solutionPath);
   } else if (source.questionType === "latin_square") {
     const specification = record(stored.response);
     const sourceOptions = Array.isArray(specification?.options) ? specification.options : [];
@@ -45,8 +48,14 @@ export function createPracticeSnapshots(source: Source): { publicQuestion: Pract
       return { id: String(option?.id ?? index), label: String(option?.label ?? ""), content: String(option?.content ?? "") };
     }) };
     correctAnswer = metadata.correctAnswer;
+    explanationTrace = structuredClone(stored.deductionTrace);
   } else if (source.questionType === "figure_sequence") {
-    const sequence = structuredClone(stored.sequence) as { missingMatrices?: Array<{ candidates?: Array<{ id: string }> }> };
+    const storedSequence = record(stored.sequence) ?? {};
+    const sequence = {
+      grid: structuredClone(storedSequence.grid),
+      visibleFrames: structuredClone(storedSequence.visibleFrames),
+      missingMatrices: structuredClone(storedSequence.missingMatrices),
+    } as { missingMatrices?: Array<{ candidates?: Array<{ id: string }> }> };
     const storedAnswers = Array.isArray(metadata.correctAnswer) ? metadata.correctAnswer.map(String) : [];
     const publicAnswers: string[] = [];
     sequence.missingMatrices?.forEach((matrix, matrixIndex) => matrix.candidates?.forEach((candidate, candidateIndex) => {
@@ -57,30 +66,7 @@ export function createPracticeSnapshots(source: Source): { publicQuestion: Pract
     structuredData = sequence;
     response = { kind: "two_stage_single_choice" };
     correctAnswer = publicAnswers;
-  } else if (source.questionType === "computer_science") {
-    const questions = Array.isArray(stored.questions) ? stored.questions : [];
-    const answers: Record<string, string> = {};
-    const publicQuestions = questions.map((value) => {
-      const question = record(value) ?? {};
-      const id = String(question.id ?? "");
-      answers[id] = String(question.correctOptionId ?? "");
-      const publicOptions = Array.isArray(question.options) ? question.options.map((value) => {
-        const option = record(value) ?? {};
-        return { id: String(option.id ?? ""), label: String(option.label ?? ""), content: option.content };
-      }) : [];
-      return {
-        id,
-        questionText: String(question.questionText ?? ""),
-        family: String(question.family ?? ""),
-        reasoningRole: String(question.reasoningRole ?? ""),
-        stimulusBlockIds: Array.isArray(question.stimulusBlockIds) ? question.stimulusBlockIds.map(String) : [],
-        difficulty: question.difficulty,
-        options: publicOptions,
-      };
-    });
-    structuredData = { stimulus: stored.stimulus, questions: publicQuestions };
-    response = { kind: "subject_answers" };
-    correctAnswer = answers;
+    explanationTrace = { rules: structuredClone(record(stored.task)?.rules) };
   } else {
     throw new Error("Unsupported generated practice response type.");
   }
@@ -104,7 +90,12 @@ export function createPracticeSnapshots(source: Source): { publicQuestion: Pract
       response,
       options: response.kind === "single_choice" ? response.options : [],
     },
-    privateSnapshot: { correctAnswer, explanation: source.explanation, provenance: generation },
+    privateSnapshot: {
+      correctAnswer,
+      explanation: source.explanation,
+      ...(explanationTrace === undefined ? {} : { explanationTrace }),
+      provenance: generation,
+    },
   };
 }
 
@@ -112,6 +103,5 @@ export function gradePracticeAnswer(answer: PracticeAnswer, privateSnapshot: Pri
   const expected = privateSnapshot.correctAnswer;
   if (answer.kind === "single_choice") return answer.optionId === expected;
   if (answer.kind === "symbol_assignment") return JSON.stringify(answer.values, Object.keys(answer.values).sort()) === JSON.stringify(expected, Object.keys(record(expected) ?? {}).sort());
-  if (answer.kind === "two_stage_single_choice") return JSON.stringify(answer.optionIds) === JSON.stringify(expected);
-  return JSON.stringify(answer.answers, Object.keys(answer.answers).sort()) === JSON.stringify(expected, Object.keys(record(expected) ?? {}).sort());
+  return JSON.stringify(answer.optionIds) === JSON.stringify(expected);
 }

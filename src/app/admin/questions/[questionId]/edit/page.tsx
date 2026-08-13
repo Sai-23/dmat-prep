@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { QuestionForm } from "@/components/admin/question-form";
+import { DeleteQuestionButton } from "@/components/admin/delete-question-button";
 import { PageShell } from "@/components/layout/page-shell";
 import { ErrorState } from "@/components/shared/error-state";
 import { getEditableQuestion } from "@/lib/admin/data";
@@ -49,7 +50,12 @@ export default async function QuestionEditPage({
           description={loadError ?? "Unable to load this question."}
         />
       ) : (
-        <QuestionForm initialQuestion={question} />
+        <div className="space-y-6">
+          <QuestionForm initialQuestion={question} />
+          <div className="flex justify-end border-t border-workspace-separator pt-6">
+            <DeleteQuestionButton questionId={question.id} />
+          </div>
+        </div>
       )}
     </PageShell>
   );

@@ -72,39 +72,6 @@ reproducibility comparisons and fingerprints.
 - Independent replay must reproduce every shown frame and both missing frames. Each candidate
   set has exactly one correct matrix and no equivalent distractor.
 
-## Computer Science subject module (official material pp. 34 onward)
-
-- The domain shape is `Stimulus -> Questions[]`.
-- Each question has four answer options and exactly one correct option.
-- Stimuli, questions, and options may include prose, figures, tables, and formulas.
-- Questions combine subject knowledge with application rather than pure factual recall.
-- Deterministically solvable families are preferred; an LLM cannot be the sole correctness
-  judge.
-
-### G13 architecture decision
-
-- A subject unit is a versioned `Stimulus -> Questions[]` aggregate and is deliberately not
-  forced into the single-question Core generator model.
-- The shared stimulus and each question use typed presentation blocks for prose, code,
-  formulas, tables, and structural diagrams.
-- Every child question has exactly four distinct options and one stored correct option.
-- Unit and option identifiers are incidental; semantic fingerprints exclude them.
-- The existing `questions.structured_data` JSONB field can retain the aggregate during initial
-  integration, so G13 adds no database migration. Persistence and generated topic families
-  remain G14 work.
-
-### G14 first deterministic family
-
-- The first subject family is Boolean logic through complete truth-table output columns.
-- One shared stimulus defines the variable row order and two original Boolean expressions;
-  each expression has its own four-option question.
-- An independent evaluator calculates every row, requires exactly one matching option, and
-  rejects duplicate expressions, malformed row orders, duplicate output choices, answer-key
-  mismatches, and difficulty mismatches.
-- Difficulty is derived from variable count, operator count, and expression depth. The versioned
-  policy uses two-variable single-operation expressions for easy, three-variable nested
-  expressions for medium, and deeper expressions with negation for hard.
-
 ## Existing-system implications
 
 The current SQL schema already provides `questions.structured_data` and `questions.metadata`
@@ -121,4 +88,3 @@ for the relevant integration milestones rather than weakening the generation dom
   candidates; these must be confirmed from the rendered task format before G9-G11.
 - The equation instructions specify finding letter values but not the production UI response
   control. G5 must preserve multi-value answers without assuming conventional A-D choices.
-- The subject module states that a stimulus has a number of questions but sets no fixed count.

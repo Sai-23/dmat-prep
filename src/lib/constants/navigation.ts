@@ -59,7 +59,7 @@ export const adminNavigation: NavigationItem[] = [
   },
   {
     href: "/admin/review",
-    label: "Review Queue",
+    label: "Question Bank",
     requiresAuth: true,
     roles: ["admin", "reviewer"],
   },

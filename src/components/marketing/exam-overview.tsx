@@ -9,12 +9,6 @@ const modules = [
       "Figure sequences, mathematical equations, and 5×5 Latin Squares with structured generation and validation pipelines.",
     tags: ["SVG figures", "Deterministic logic", "Timed drills"],
   },
-  {
-    title: "Computer Science Module",
-    description:
-      "Application-focused questions across algorithms, systems, databases, networks, software engineering, and discrete mathematics.",
-    tags: ["Scenario-based", "Reasoning-first", "Subject-focused"],
-  },
 ];
 
 export function ExamOverview() {
@@ -22,10 +16,10 @@ export function ExamOverview() {
     <section className="space-y-8">
       <SectionHeading
         eyebrow="Exam structure"
-        title="A foundation aligned with both the Core Module and Computer Science"
+        title="A focused foundation for the Core Module"
         description="Phase 1 establishes the shared architecture needed for SVG-based figures, structured data payloads, review workflows, and realistic test delivery."
       />
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid gap-5">
         {modules.map((module) => (
           <Card key={module.title}>
             <CardHeader>

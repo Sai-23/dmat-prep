@@ -1,39 +1,36 @@
 # Q1 Generator Integrity Audit
 
-Generated at: 2026-08-08T16:27:00.461Z
+Generated at: 2026-08-09T10:51:14.113Z
 
 ## Acceptance summary
 
-- Requested: 120000
-- Accepted: 120000
-- Rejected candidates before acceptance: 158724
+- Requested: 90000
+- Accepted: 90000
+- Rejected candidates before acceptance: 154618
 - Accepted-invalid: 0
 - Solver mismatches: 0
-- Duplicate fingerprints: 54213
+- Duplicate fingerprints: 28157
 - Determinism failures: 0
 
 ## Per-generator results
 
 | Generator | Difficulty | Seeds | Accepted | Rejected | Invalid | Duplicates | Duplicate rate | Mean ms | P95 ms | Max ms |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| mathematical-equations | easy | 10000 | 10000 | 0 | 0 | 4748 | 47.5% | 0.108 | 0.194 | 2.302 |
-| mathematical-equations | medium | 10000 | 10000 | 0 | 0 | 297 | 3.0% | 0.31 | 0.635 | 2.074 |
-| mathematical-equations | hard | 10000 | 10000 | 0 | 0 | 4 | 0.0% | 2.551 | 6.228 | 34.059 |
-| latin-squares | easy | 10000 | 10000 | 36723 | 0 | 0 | 0.0% | 0.68 | 2.04 | 9.72 |
-| latin-squares | medium | 10000 | 10000 | 27007 | 0 | 0 | 0.0% | 0.693 | 1.984 | 7.409 |
-| latin-squares | hard | 10000 | 10000 | 87295 | 0 | 11 | 0.1% | 1.882 | 5.417 | 17.019 |
-| figure-sequences | easy | 10000 | 10000 | 0 | 0 | 9728 | 97.3% | 0.287 | 0.547 | 2.172 |
-| figure-sequences | medium | 10000 | 10000 | 902 | 0 | 7903 | 79.0% | 0.521 | 0.932 | 3.731 |
-| figure-sequences | hard | 10000 | 10000 | 2691 | 0 | 5466 | 54.7% | 1.014 | 2.652 | 41.072 |
-| computer-science-boolean | easy | 10000 | 10000 | 3207 | 0 | 9988 | 99.9% | 0.095 | 0.202 | 2.426 |
-| computer-science-boolean | medium | 10000 | 10000 | 740 | 0 | 9760 | 97.6% | 0.114 | 0.223 | 1.833 |
-| computer-science-boolean | hard | 10000 | 10000 | 159 | 0 | 6308 | 63.1% | 0.132 | 0.257 | 2.9 |
+| mathematical-equations | easy | 10000 | 10000 | 0 | 0 | 4748 | 47.5% | 0.113 | 0.211 | 2.542 |
+| mathematical-equations | medium | 10000 | 10000 | 0 | 0 | 297 | 3.0% | 0.345 | 0.674 | 48.306 |
+| mathematical-equations | hard | 10000 | 10000 | 0 | 0 | 4 | 0.0% | 2.016 | 3.335 | 25.639 |
+| latin-squares | easy | 10000 | 10000 | 36723 | 0 | 0 | 0.0% | 0.686 | 2.048 | 7.656 |
+| latin-squares | medium | 10000 | 10000 | 27007 | 0 | 0 | 0.0% | 0.736 | 2.059 | 45.178 |
+| latin-squares | hard | 10000 | 10000 | 87295 | 0 | 11 | 0.1% | 1.874 | 5.411 | 30.837 |
+| figure-sequences | easy | 10000 | 10000 | 0 | 0 | 9728 | 97.3% | 0.28 | 0.485 | 2.679 |
+| figure-sequences | medium | 10000 | 10000 | 902 | 0 | 7903 | 79.0% | 0.526 | 0.877 | 2.402 |
+| figure-sequences | hard | 10000 | 10000 | 2691 | 0 | 5466 | 54.7% | 0.607 | 1.043 | 41.871 |
 
 ## Adversarial rejection
 
-Mutations rejected: 20/20 (100.0%).
+Mutations rejected: 16/16 (100.0%).
 
-Mutation suites cover incorrect/ambiguous equation answers, invalid divisors and explanations; malformed, ambiguous and inconsistent Latin squares; corrupt figure frames, duplicate continuations and wrong answer keys; and malformed Boolean units, duplicate choices and evaluator mismatches.
+Mutation suites cover incorrect or ambiguous equation answers, invalid divisors and explanations; malformed, ambiguous and inconsistent Latin squares; and corrupt figure frames, duplicate continuations and wrong answer keys.
 
 ## Findings
 

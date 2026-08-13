@@ -109,7 +109,7 @@ export function TestManager({
                   ) : null}
                 </div>
                 <span className="text-xs text-slate-500">
-                  {test.module?.replace("_", " ") ?? "mixed modules"}
+                  {test.module?.replace("_", " ") ?? "Core assessment"}
                 </span>
               </div>
               <CardTitle className="pt-3 text-xl">{test.title}</CardTitle>

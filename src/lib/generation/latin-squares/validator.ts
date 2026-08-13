@@ -6,8 +6,8 @@ import type {
   ValidationResult,
 } from "../types";
 import {
+  analyzeLatinDeductions,
   calculateLatinDifficulty,
-  deriveLatinDeductions,
   explainLatinDeductions,
 } from "./difficulty";
 import { latinSquareSolver } from "./solver";
@@ -154,8 +154,9 @@ export class LatinSquareValidator
       };
     }
 
-    const deductions = deriveLatinDeductions(candidate);
-    const calculated = calculateLatinDifficulty(candidate, deductions);
+    const analysis = analyzeLatinDeductions(candidate);
+    const deductions = analysis.deductions;
+    const calculated = calculateLatinDifficulty(candidate, analysis);
     checks.push(validationCheck("explanation", calculated !== null, { deductionCount: deductions.length }));
     if (!calculated) {
       return {

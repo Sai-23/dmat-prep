@@ -5,8 +5,8 @@ import type {
   GenerationDifficulty,
 } from "../types";
 
-export const FIGURE_SEQUENCE_GENERATOR_VERSION = "figure-sequences@1.0.0";
-export const FIGURE_SEQUENCE_VALIDATOR_VERSION = "figure-sequences-validator@1.0.0";
+export const FIGURE_SEQUENCE_GENERATOR_VERSION = "figure-sequences@2.0.0";
+export const FIGURE_SEQUENCE_VALIDATOR_VERSION = "figure-sequences-validator@2.0.0";
 
 export const FIGURE_SHAPES = [
   "circle",
@@ -161,15 +161,24 @@ export type FigureSequenceQuestion = GeneratedQuestion<
 
 export type FigureSequenceGenerationConfiguration = GenerationConfiguration & {
   difficulty: "easy" | "medium" | "hard";
+  /** Deterministic test/development override. Normal generation uses weighted profiles. */
+  symbolCount?: 1 | 2 | 3 | 4;
 };
 
 export type FigureDifficultyMetrics = {
   symbolCount: number;
   movementRuleCount: number;
   attributeRuleCount: number;
+  independentRuleCount: number;
   progressiveRuleCount: number;
   cycleRuleCount: number;
   borderRuleCount: number;
+  orientationRuleCount: number;
+  pathComplexity: number;
+  cycleComplexity: number;
+  advancedRuleCount: number;
+  predictionDepth: number;
+  distractorSimilarity: number;
   score: number;
 };
 

@@ -2,11 +2,10 @@ export const GENERATED_QUESTION_TYPES = [
   "mathematical_equation",
   "latin_square",
   "figure_sequence",
-  "computer_science",
 ] as const;
 
 export const GENERATION_DIFFICULTIES = ["easy", "medium", "hard"] as const;
-export const QUESTION_MODULES = ["core", "computer_science"] as const;
+export const QUESTION_MODULES = ["core"] as const;
 
 export type GeneratedQuestionType = (typeof GENERATED_QUESTION_TYPES)[number];
 export type GenerationDifficulty = (typeof GENERATION_DIFFICULTIES)[number];
@@ -145,4 +144,3 @@ export interface QuestionValidator<
     requestedDifficulty: GenerationDifficulty,
   ): ValidationResult<TSolution>;
 }
-

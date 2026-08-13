@@ -40,14 +40,6 @@ function nativeResponseMatches(questionType: string, structuredValue: unknown): 
   if (questionType === "mathematical_equation") return response?.kind === "symbol_assignment";
   if (questionType === "latin_square") return response?.kind === "single_choice" && Array.isArray(response.options) && response.options.length === 5;
   if (questionType === "figure_sequence") return response?.kind === "two_stage_single_choice" && Array.isArray(response.stages) && response.stages.length === 2;
-  if (questionType === "computer_science") {
-    const questions = structured?.questions;
-    return Array.isArray(questions) && questions.length > 0 && questions.every((question) => {
-      const child = record(question);
-      const options = child?.options;
-      return Array.isArray(options) && options.length === 4 && options.some((option) => record(option)?.id === child?.correctOptionId);
-    });
-  }
   return false;
 }
 
@@ -79,5 +71,9 @@ export function canMakeReviewDecision(roles: readonly UserRole[]): boolean {
 }
 
 export function canManageQuestionLifecycle(roles: readonly UserRole[]): boolean {
+  return roles.includes("admin");
+}
+
+export function canDeleteQuestions(roles: readonly UserRole[]): boolean {
   return roles.includes("admin");
 }

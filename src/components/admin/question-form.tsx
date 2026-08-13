@@ -17,6 +17,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { EditableQuestion } from "@/lib/admin/schemas";
+import { ADMIN_CORE_QUESTION_TYPE_OPTIONS } from "@/lib/admin/core-options";
 
 const initialState: QuestionFormState = { status: "idle" };
 
@@ -42,10 +43,7 @@ export function QuestionForm({
     initialState,
   );
   const [questionType, setQuestionType] = useState<string>(
-    initialQuestion?.questionType ?? "computer_science",
-  );
-  const [module, setModule] = useState<string>(
-    initialQuestion?.module ?? "computer_science",
+    initialQuestion?.questionType ?? "mathematical_equation",
   );
   const [questionText, setQuestionText] = useState(
     initialQuestion?.questionText ?? "",
@@ -61,7 +59,6 @@ export function QuestionForm({
 
   const changeQuestionType = (value: string) => {
     setQuestionType(value);
-    setModule(value === "computer_science" ? "computer_science" : "core");
   };
 
   return (
@@ -93,7 +90,7 @@ export function QuestionForm({
           <CardHeader>
             <CardTitle>Question classification</CardTitle>
             <CardDescription>
-              Choose the module, content type, topic, source, and difficulty.
+              Choose the Core question type, topic, source, and difficulty.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-5 md:grid-cols-2">
@@ -105,33 +102,20 @@ export function QuestionForm({
                 onChange={(event) => changeQuestionType(event.target.value)}
                 value={questionType}
               >
-                <option value="computer_science">Computer Science</option>
-                <option value="mathematical_equation">Mathematical equation</option>
-                <option value="figure_sequence">Figure sequence</option>
-                <option value="latin_square">Latin square</option>
+                {ADMIN_CORE_QUESTION_TYPE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
               </select>
               <FieldError errors={state.errors?.questionType} />
             </label>
-            <label className="space-y-2 text-sm font-semibold">
-              Module
-              <select
-                className="h-12 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 font-normal"
-                name="module"
-                onChange={(event) => setModule(event.target.value)}
-                value={module}
-              >
-                <option value="computer_science">Computer Science</option>
-                <option value="core">Core Module</option>
-              </select>
-              <FieldError errors={state.errors?.module} />
-            </label>
+            <input name="module" type="hidden" value="core" />
             <label className="space-y-2 text-sm font-semibold">
               Subject
               <input
                 className="h-12 w-full rounded-xl border border-slate-300 px-4 font-normal"
                 defaultValue={initialQuestion?.subject ?? ""}
                 name="subject"
-                placeholder="e.g. Computer Science"
+                placeholder="Optional"
               />
             </label>
             <label className="space-y-2 text-sm font-semibold">
@@ -140,7 +124,7 @@ export function QuestionForm({
                 className="h-12 w-full rounded-xl border border-slate-300 px-4 font-normal"
                 defaultValue={initialQuestion?.topic ?? ""}
                 name="topic"
-                placeholder="e.g. Algorithms"
+                placeholder="e.g. Linear systems"
                 required
               />
               <FieldError errors={state.errors?.topic} />
@@ -227,19 +211,7 @@ export function QuestionForm({
                 placeholder="Optional context or passage"
               />
             </label>
-            {questionType === "computer_science" ? (
-              <label className="block space-y-2 text-sm font-semibold">
-                Code sample
-                <textarea
-                  className="min-h-32 w-full rounded-md border border-workspace-border bg-code-background p-4 font-mono text-sm font-normal text-code-foreground"
-                  defaultValue={initialQuestion?.code ?? ""}
-                  name="code"
-                  placeholder="// Optional code"
-                />
-              </label>
-            ) : (
-              <input name="code" type="hidden" value="" />
-            )}
+            <input name="code" type="hidden" value="" />
             {questionType === "mathematical_equation" ? (
               <label className="block space-y-2 text-sm font-semibold">
                 Formula
@@ -414,7 +386,7 @@ export function QuestionForm({
           <CardContent className="space-y-4">
             <div className="flex flex-wrap gap-2">
               <Badge>{questionType.replaceAll("_", " ")}</Badge>
-              <Badge variant="subtle">{module.replace("_", " ")}</Badge>
+              <Badge variant="subtle">Core Module</Badge>
             </div>
             <p className="font-serif text-lg font-semibold leading-7">
               {questionText || "Your question prompt will appear here."}

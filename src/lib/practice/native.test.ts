@@ -1,17 +1,68 @@
 import { describe, expect, it } from "vitest";
-import { generateValidatedFigureSequence } from "../generation";
+import {
+  generateValidatedFigureSequence,
+  generateValidatedLatinSquare,
+  generateValidatedMathematicalEquation,
+} from "../generation";
 import { createPracticeSnapshots, gradePracticeAnswer } from "./native";
 
 describe("native practice snapshots", () => {
   it("removes figure answer identifiers from the browser snapshot", () => {
     const question = generateValidatedFigureSequence({ seed: "practice-figure", difficulty: "easy" });
-    const result = createPracticeSnapshots({ id: "id", module: "core", questionType: "figure_sequence", topic: "Figure", subtopic: null, difficulty: "easy", questionText: "Next?", passage: null, code: null, formula: null, tableData: null, imageUrl: null, estimatedTimeSeconds: 60, structuredData: { sequence: question.sequence, response: question.response }, metadata: { generation: question.metadata, correctAnswer: question.correctAnswer }, explanation: question.explanation, options: [], correctOptionId: null, sourceType: "generated" });
+    const result = createPracticeSnapshots({ id: "id", module: "core", questionType: "figure_sequence", topic: "Figure", subtopic: null, difficulty: "easy", questionText: "Next?", passage: null, code: null, formula: null, tableData: null, imageUrl: null, estimatedTimeSeconds: 60, structuredData: { task: question.structuredData, sequence: question.sequence, response: question.response }, metadata: { generation: question.metadata, correctAnswer: question.correctAnswer }, explanation: question.explanation, options: [], correctOptionId: null, sourceType: "generated" });
     expect(JSON.stringify(result.publicQuestion)).not.toContain("-correct");
+    expect(JSON.stringify(result.publicQuestion)).not.toContain("rules");
+    expect(result.privateSnapshot.explanationTrace).toEqual({ rules: question.structuredData.rules });
     expect(gradePracticeAnswer({ kind: "two_stage_single_choice", optionIds: result.privateSnapshot.correctAnswer as [string, string] }, result.privateSnapshot)).toBe(true);
   });
 
   it("grades native assignments independently from browser state", () => {
     expect(gradePracticeAnswer({ kind: "symbol_assignment", values: { A: 4, B: 7 } }, { correctAnswer: { A: 4, B: 7 }, explanation: "", provenance: {} })).toBe(true);
     expect(gradePracticeAnswer({ kind: "symbol_assignment", values: { A: 4, B: 8 } }, { correctAnswer: { A: 4, B: 7 }, explanation: "", provenance: {} })).toBe(false);
+  });
+
+  it("keeps the Latin deduction trace private until answer feedback", () => {
+    const question = generateValidatedLatinSquare({
+      seed: "practice-private-latin-trace",
+      difficulty: "hard",
+      maxAttempts: 5_000,
+    });
+    const result = createPracticeSnapshots({
+      id: "latin-id", module: "core", questionType: "latin_square", topic: "Latin Squares",
+      subtopic: null, difficulty: "hard", questionText: "Which letter?", passage: null,
+      code: null, formula: null, tableData: null, imageUrl: null, estimatedTimeSeconds: 90,
+      structuredData: {
+        task: question.structuredData,
+        response: question.response,
+        deductionTrace: question.deductionTrace,
+      },
+      metadata: { generation: question.metadata, correctAnswer: question.correctAnswer },
+      explanation: question.explanation, options: [], correctOptionId: null, sourceType: "generated",
+    });
+    expect(JSON.stringify(result.publicQuestion)).not.toContain("deductionTrace");
+    expect(JSON.stringify(result.publicQuestion)).not.toContain("correctAnswer");
+    expect(result.privateSnapshot.explanationTrace).toEqual(question.deductionTrace);
+  });
+
+  it("keeps the Equation solution path private until answer feedback", () => {
+    const question = generateValidatedMathematicalEquation({
+      seed: "practice-private-equation-trace",
+      difficulty: "medium",
+    });
+    const result = createPracticeSnapshots({
+      id: "equation-id", module: "core", questionType: "mathematical_equation",
+      topic: "Mathematical Equations", subtopic: null, difficulty: "medium",
+      questionText: "Find every value.", passage: null, code: null, formula: null,
+      tableData: null, imageUrl: null, estimatedTimeSeconds: 90,
+      structuredData: {
+        task: question.structuredData,
+        response: question.response,
+        solutionPath: question.solutionPath,
+      },
+      metadata: { generation: question.metadata, correctAnswer: question.correctAnswer },
+      explanation: question.explanation, options: [], correctOptionId: null, sourceType: "generated",
+    });
+    expect(JSON.stringify(result.publicQuestion)).not.toContain("solutionPath");
+    expect(result.privateSnapshot.explanationTrace).toEqual(question.solutionPath);
   });
 });

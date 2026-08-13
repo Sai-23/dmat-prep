@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 const previews = [
   {
     title: "Sample question preview",
-    description: "Structured question payloads for figures, equations, Latin Squares, and Computer Science reasoning.",
+    description: "Structured question payloads for figures, equations, and Latin Squares.",
     icon: BookCheck,
   },
   {
@@ -44,9 +44,9 @@ const faqs = [
       "The first phase sets up the Next.js app shell, Supabase integration points, route structure, domain types, and secure SQL migrations for the full platform.",
   },
   {
-    question: "Why start with Computer Science?",
+    question: "Which question types are supported?",
     answer:
-      "The initial release focuses on the Computer Science subject module while keeping the architecture ready for the broader dMAT exam structure.",
+      "The current release focuses on the Core Module: Figure Sequences, Mathematical Equations, and Latin Squares.",
   },
 ];
 

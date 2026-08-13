@@ -16,7 +16,7 @@ const nullableModule = z
 const testSectionSchema = z.object({
   title: z.string().trim().min(2, "Enter a section title.").max(120),
   module: nullableModule,
-  sectionType: z.enum(["figure_sequence", "mathematical_equation", "latin_square", "computer_science", "mixed"]),
+  sectionType: z.enum(["figure_sequence", "mathematical_equation", "latin_square", "mixed"]),
   durationSeconds: z.coerce.number().int().min(60).max(14_400),
   questionIds: z.array(z.string().uuid()).min(1).max(100),
 });
@@ -82,12 +82,11 @@ export type AdminTestBuilderInput = z.infer<typeof adminTestBuilderSchema>;
 
 export type AdminQuestionBankItem = {
   id: string;
-  module: "core" | "computer_science";
+  module: "core";
   questionType:
     | "figure_sequence"
     | "mathematical_equation"
-    | "latin_square"
-    | "computer_science";
+    | "latin_square";
   topic: string;
   subtopic: string | null;
   difficulty: "easy" | "medium" | "hard";
@@ -100,7 +99,7 @@ export type EditableAdminTest = {
   title: string;
   description: string | null;
   testType: (typeof TEST_TYPES)[number];
-  module: "core" | "computer_science" | null;
+  module: "core" | null;
   instructions: string | null;
   isPremium: boolean;
   isPublished: boolean;
@@ -108,8 +107,8 @@ export type EditableAdminTest = {
   randomizeOptions: boolean;
   sections: Array<{
     title: string;
-    sectionType: "figure_sequence" | "mathematical_equation" | "latin_square" | "computer_science" | "mixed";
-    module: "core" | "computer_science" | null;
+    sectionType: "figure_sequence" | "mathematical_equation" | "latin_square" | "mixed";
+    module: "core" | null;
     durationSeconds: number;
     questionIds: string[];
   }>;
@@ -119,7 +118,7 @@ export type AdminTestListItem = {
   id: string;
   title: string;
   testType: (typeof TEST_TYPES)[number];
-  module: "core" | "computer_science" | null;
+  module: "core" | null;
   durationSeconds: number;
   isPremium: boolean;
   isPublished: boolean;

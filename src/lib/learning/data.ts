@@ -36,8 +36,10 @@ export async function setBookmark(
     .from("questions")
     .select("id")
     .eq("id", questionId)
+    .eq("module", "core")
     .eq("verification_status", "approved")
     .eq("publication_status", "published")
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (!question) throw new Error("This question is unavailable.");
@@ -124,8 +126,10 @@ export async function getBookmarks(userId: string): Promise<BookmarkQuestion[]> 
       "id, module, question_type, topic, subtopic, difficulty, question_text",
     )
     .in("id", questionIds)
+    .eq("module", "core")
     .eq("verification_status", "approved")
-    .eq("publication_status", "published");
+    .eq("publication_status", "published")
+    .is("deleted_at", null);
 
   if (questionError) throw new Error("Unable to load bookmarked questions.");
   const questionById = new Map(
@@ -210,7 +214,8 @@ export async function getMistakes(userId: string): Promise<MistakeQuestion[]> {
       .select(
         "id, module, question_type, topic, subtopic, difficulty, question_text, correct_option_id, explanation",
       )
-      .in("id", questionIds),
+      .in("id", questionIds)
+      .eq("module", "core"),
     admin
       .from("question_options")
       .select("id, question_id, label, content, sort_order")

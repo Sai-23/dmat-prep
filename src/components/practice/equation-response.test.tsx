@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { PracticeQuestion } from "../../lib/practice/schemas";
 import { NativePracticeResponse, normalizeEquationInput } from "./native-practice-response";
 import { PracticeAnswerFeedback } from "./practice-answer-feedback";
+import { equationText } from "../questions/equation-renderer";
 
 const question: PracticeQuestion = {
   id: "equation", module: "core", questionType: "mathematical_equation", topic: "Equations",
@@ -43,19 +44,44 @@ describe("mathematical-equation response UX", () => {
 
   it("renders human-readable, per-variable feedback without response JSON", () => {
     const html = renderToStaticMarkup(<PracticeAnswerFeedback answer={{ kind: "symbol_assignment", values: { A: 6, B: 6 } }} correctAnswer={{ A: 12, B: 6 }} question={question} />);
-    expect(html).toContain("A = 6");
-    expect(html).toContain("A = 12");
-    expect(html).toContain("B = 6");
-    expect(html).toContain('aria-label="Incorrect"');
-    expect(html).toContain('aria-label="Correct"');
+    expect(html).toContain("1 of 2 values correct");
+    expect(html).toContain("Variable A. Your answer 6. Correct answer 12. Incorrect.");
+    expect(html).toContain("Variable B. Your answer 6. Correct answer 6. Correct.");
+    expect(html).toContain('data-answer-review="mathematical-equation"');
     expect(html).not.toContain("symbol_assignment");
     expect(html).not.toContain("&quot;values&quot;");
     expect(html).not.toContain("{&quot;");
   });
 
   it("does not reveal correct values in the active response component", () => {
-    const html = renderToStaticMarkup(<NativePracticeResponse answer={{ kind: "symbol_assignment", values: { A: 6 } }} disabled={false} onChange={() => undefined} question={question} />);
+    const html = renderToStaticMarkup(<NativePracticeResponse answer={{ kind: "symbol_assignment", values: { A: 6 } }} disabled onChange={() => undefined} question={question} />);
     expect(html).not.toContain("A = 12");
     expect(html).not.toContain("Correct value");
+    expect(html).not.toContain("border-success");
+    expect(html).not.toContain("border-error");
+  });
+
+  it("can retain the equation while removing redundant submitted inputs in review", () => {
+    const html = renderToStaticMarkup(<NativePracticeResponse answer={{ kind: "symbol_assignment", values: { A: 6 } }} disabled hideAnswerInputs onChange={() => undefined} question={question} />);
+    expect(html).toContain('aria-label="Equation system"');
+    expect(html).not.toContain('data-response-interface="equation-variable-values"');
+    expect(html).not.toContain('aria-label="A value"');
+  });
+
+  it("uses readable mathematical symbols and preserves compound precedence", () => {
+    expect(equationText({
+      left: {
+        kind: "operation",
+        operator: "subtract",
+        left: {
+          kind: "operation",
+          operator: "add",
+          left: { kind: "variable", symbol: "A" },
+          right: { kind: "variable", symbol: "B" },
+        },
+        right: { kind: "variable", symbol: "C" },
+      },
+      right: { kind: "constant", value: 4 },
+    })).toBe("A + B − C = 4");
   });
 });

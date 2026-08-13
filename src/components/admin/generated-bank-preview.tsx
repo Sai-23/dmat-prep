@@ -1,9 +1,7 @@
-import { ComputerScienceSubjectRenderer } from "@/components/questions/computer-science-renderer";
 import { EquationRenderer } from "@/components/questions/equation-renderer";
 import { FigureSequenceRenderer } from "@/components/questions/figure-sequence-renderer";
 import { LatinSquareRenderer } from "@/components/questions/latin-square-renderer";
 import type {
-  BooleanLogicGeneratedUnit,
   FigureSequencePresentation,
   LatinSquareStructuredData,
   MathematicalEquationStructuredData,
@@ -24,9 +22,6 @@ export function GeneratedBankPreview({ questionType, structuredData }: { questio
   }
   if (questionType === "figure_sequence" && stored.sequence) {
     return <FigureSequenceRenderer sequence={stored.sequence as FigureSequencePresentation} />;
-  }
-  if (questionType === "computer_science" && stored.stimulus && stored.questions) {
-    return <ComputerScienceSubjectRenderer unit={{ schemaVersion: 1, module: "computer_science", subject: "computer_science", topic: "Computer Science", stimulus: stored.stimulus, questions: stored.questions } as BooleanLogicGeneratedUnit} />;
   }
   return null;
 }

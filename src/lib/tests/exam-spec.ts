@@ -1,16 +1,10 @@
 export const DMAT_EXAM_SPEC = {
-  version: "dmat-computer-science-2025-01-08",
+  version: "dmat-core-2026-08-09",
   core: [
     { sectionType: "figure_sequence", title: "Figure Sequences", questionCount: 20, durationSeconds: 25 * 60 },
     { sectionType: "mathematical_equation", title: "Mathematical Equations", questionCount: 20, durationSeconds: 25 * 60 },
     { sectionType: "latin_square", title: "Latin Squares", questionCount: 20, durationSeconds: 25 * 60 },
   ],
-  subject: {
-    sectionType: "computer_science",
-    title: "Computer Science Subject Module",
-    durationSeconds: 90 * 60,
-    questionCount: null,
-  },
 } as const;
 
 export type ExamSectionSnapshot = {
@@ -24,15 +18,15 @@ export type ExamSectionSnapshot = {
 export function validateOfficialFullMockSections(
   sections: Array<ExamSectionSnapshot & { questionCount: number }>,
 ) {
-  const expected = [...DMAT_EXAM_SPEC.core, DMAT_EXAM_SPEC.subject];
-  if (sections.length !== expected.length) return "A full mock must contain the three Core subtests and one Computer Science Subject Module.";
+  const expected = [...DMAT_EXAM_SPEC.core];
+  if (sections.length !== expected.length) return "A full mock must contain the three Core subtests.";
   for (let index = 0; index < expected.length; index += 1) {
     const actual = sections[index];
     const specification = expected[index];
     if (actual.sectionType !== specification.sectionType || actual.durationSeconds !== specification.durationSeconds) {
       return `${specification.title} must use the official section type and duration.`;
     }
-    if (specification.questionCount !== null && actual.questionCount !== specification.questionCount) {
+    if (actual.questionCount !== specification.questionCount) {
       return `${specification.title} must contain ${specification.questionCount} questions.`;
     }
   }

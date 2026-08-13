@@ -73,6 +73,7 @@ export async function loadDashboardData(userId: string): Promise<LoadDashboardRe
         .select(
           "topic, subtopic, accuracy, average_response_time_seconds, attempts_count",
         )
+        .eq("module", "core")
         .eq("user_id", userId)
         .gt("attempts_count", 0)
         .order("accuracy", { ascending: true })

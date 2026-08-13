@@ -1,0 +1,60 @@
+{
+  "generatedAt": "2026-08-10T11:20:10.965Z",
+  "totalGenerated": 1000,
+  "totalAccepted": 1000,
+  "totalRejected": 117,
+  "totalRegenerated": 91,
+  "candidatesAttempted": 1117,
+  "requestedDifficultyDistribution": {
+    "easy": 250,
+    "medium": 500,
+    "hard": 250
+  },
+  "byDifficulty": {
+    "easy": {
+      "count": 250,
+      "averageVariables": 2,
+      "averageEquations": 2,
+      "averageReasoningDepth": 2,
+      "averageComplexityScore": 1.232
+    },
+    "medium": {
+      "count": 500,
+      "averageVariables": 3.806,
+      "averageEquations": 3.806,
+      "averageReasoningDepth": 3.806,
+      "averageComplexityScore": 8.778
+    },
+    "hard": {
+      "count": 250,
+      "averageVariables": 4,
+      "averageEquations": 4,
+      "averageReasoningDepth": 5.216,
+      "averageComplexityScore": 11.692
+    }
+  },
+  "templateDistribution": {
+    "easy_multiplier_difference": 70,
+    "easy_division_difference": 58,
+    "easy_scaled_total": 54,
+    "easy_sum_difference": 68,
+    "medium_hidden_sum": 157,
+    "medium_hidden_difference": 120,
+    "medium_mixed_grouping": 126,
+    "medium_reverse_relationship": 97,
+    "hard_nested_dependency": 77,
+    "hard_group_bridge": 62,
+    "hard_two_groups": 57,
+    "hard_dependency_chain": 54
+  },
+  "positiveIntegerSolutionPercent": 100,
+  "decimalOrFractionalSolutionPercent": 0,
+  "validationFailuresByReason": {
+    "DUPLICATE_FINGERPRINT": 117
+  },
+  "duplicateRejectionCount": 117,
+  "responseMode": "symbol_assignment",
+  "mcqOptionValidation": "not_applicable",
+  "uniqueFingerprintCount": 351,
+  "uniqueStructuralSignatureCount": 357
+}

@@ -17,6 +17,8 @@ const buttonVariants = cva(
           "border-transparent bg-transparent text-on-surface hover:bg-surface-high",
         outline:
           "border-workspace-border bg-transparent text-on-surface hover:bg-surface-high",
+        destructive:
+          "border-transparent bg-error text-white hover:opacity-90",
       },
       size: {
         default: "h-10 px-4",

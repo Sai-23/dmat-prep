@@ -23,7 +23,7 @@ export type TestCatalogItem = {
   title: string;
   description: string | null;
   testType: "diagnostic" | "mini_mock" | "full_mock" | "sectional";
-  module: "core" | "computer_science" | null;
+  module: "core" | null;
   durationSeconds: number;
   isPremium: boolean;
   sectionCount: number;

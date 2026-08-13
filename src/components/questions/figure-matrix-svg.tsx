@@ -17,10 +17,12 @@ export function FigureMatrixSvg({
   grid,
   frame,
   label,
+  highlightSymbolId,
 }: {
   grid: FigureGridDefinition;
   frame: FigureFrame;
   label?: string;
+  highlightSymbolId?: string | null;
 }) {
   const validation = validateFigureFrameStructure(grid, frame);
   if (!validation.valid) {
@@ -71,11 +73,26 @@ export function FigureMatrixSvg({
         const fill = symbol.fill === "solid" ? color : "none";
         const stroke = symbol.color === "white" ? "#334155" : color;
         const common = { fill, stroke, strokeWidth: 4 };
+        const highlighted = !highlightSymbolId || symbol.id === highlightSymbolId;
         return (
           <g
             key={symbol.id}
+            opacity={highlighted ? 1 : 0.18}
+            className="transition-opacity motion-reduce:transition-none"
             transform={`translate(${centerX} ${centerY}) rotate(${symbol.orientation})`}
           >
+            {highlightSymbolId === symbol.id ? (
+              <circle
+                className="text-primary"
+                cx="0"
+                cy="0"
+                fill="none"
+                r="27"
+                stroke="currentColor"
+                strokeDasharray="5 4"
+                strokeWidth="3"
+              />
+            ) : null}
             {symbol.shape === "circle" ? (
               <circle {...common} r="18" />
             ) : symbol.shape === "square" ? (
@@ -97,4 +114,3 @@ export function FigureMatrixSvg({
     </svg>
   );
 }
-

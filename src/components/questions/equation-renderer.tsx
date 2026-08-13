@@ -5,7 +5,16 @@ import type {
 } from "@/lib/generation/mathematical-equations";
 import { cn } from "@/lib/utils";
 
-function expressionText(expression: MathematicalExpression): string {
+function precedence(expression: MathematicalExpression): number {
+  if (expression.kind !== "operation") return 3;
+  return expression.operator === "multiply" || expression.operator === "divide" ? 2 : 1;
+}
+
+function expressionText(
+  expression: MathematicalExpression,
+  parentPrecedence = 0,
+  isRight = false,
+): string {
   if (expression.kind === "constant") return String(expression.value);
   if (expression.kind === "variable") return expression.symbol;
   const operator = {
@@ -14,11 +23,14 @@ function expressionText(expression: MathematicalExpression): string {
     multiply: "×",
     divide: "÷",
   }[expression.operator];
-  const left = expressionText(expression.left);
-  const right = expressionText(expression.right);
-  const nestedRight =
-    expression.right.kind === "operation" ? `(${right})` : right;
-  return `${left} ${operator} ${nestedRight}`;
+  const currentPrecedence = precedence(expression);
+  const left = expressionText(expression.left, currentPrecedence);
+  const right = expressionText(expression.right, currentPrecedence, true);
+  const text = `${left} ${operator} ${right}`;
+  const needsParentheses = currentPrecedence < parentPrecedence ||
+    (isRight && currentPrecedence === parentPrecedence &&
+      (expression.operator === "subtract" || expression.operator === "divide"));
+  return needsParentheses ? `(${text})` : text;
 }
 
 export function equationText(equation: MathematicalEquation): string {
@@ -56,4 +68,3 @@ export function EquationRenderer({
     </div>
   );
 }
-

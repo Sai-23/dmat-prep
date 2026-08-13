@@ -20,9 +20,9 @@ export default async function ReviewQueuePage() {
 
   return (
     <PageShell
-      eyebrow="Review queue"
-      title="Validate questions before publication"
-      description="Check content, answer validity, explanations, and formatting. Reviewer decisions are recorded with comments and an audit trail."
+      eyebrow={isAdmin ? "Question bank" : "Review queue"}
+      title={isAdmin ? "Published Core questions" : "Validate questions before publication"}
+      description={isAdmin ? "Preview active questions and safely remove them from future Practice and Mock pools. Legacy unpublished questions remain available through the filters." : "Check content, answer validity, explanations, and formatting. Reviewer decisions are recorded with comments and an audit trail."}
       admin
       roles={roles}
     >
@@ -33,8 +33,8 @@ export default async function ReviewQueuePage() {
         />
       ) : questions.length === 0 ? (
         <EmptyState
-          title="The review queue is clear"
-          description="Questions submitted for review will appear here."
+          title={isAdmin ? "The active question bank is empty" : "The review queue is clear"}
+          description={isAdmin ? "Validated generated questions will appear here as soon as they are published." : "Questions submitted for review will appear here."}
         />
       ) : (
         <ReviewQueue initialQuestions={questions} isAdmin={isAdmin} />

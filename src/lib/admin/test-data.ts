@@ -42,8 +42,10 @@ async function validateQuestionAssignments(input: AdminTestBuilderInput) {
     .from("questions")
     .select("id, module, question_type")
     .in("id", questionIds)
+    .eq("module", "core")
     .eq("verification_status", "approved")
-    .eq("publication_status", "published");
+    .eq("publication_status", "published")
+    .is("deleted_at", null);
 
   if (error || !data || data.length !== questionIds.length) {
     throw new Error(
@@ -133,8 +135,10 @@ export async function getAdminQuestionBank(): Promise<
     .select(
       "id, module, question_type, topic, subtopic, difficulty, question_text, estimated_time_seconds",
     )
+    .eq("module", "core")
     .eq("verification_status", "approved")
     .eq("publication_status", "published")
+    .is("deleted_at", null)
     .order("topic", { ascending: true })
     .limit(1000);
 
@@ -168,7 +172,7 @@ export async function getAdminTests(): Promise<AdminTestListItem[]> {
   const [{ data: sections }, { data: attempts }] = await Promise.all([
     admin
       .from("test_sections")
-      .select("id, test_id")
+      .select("id, test_id, section_type")
       .in("test_id", testIds),
     admin.from("test_attempts").select("id, test_id").in("test_id", testIds),
   ]);
@@ -181,7 +185,10 @@ export async function getAdminTests(): Promise<AdminTestListItem[]> {
         .in("test_section_id", sectionIds)
     : { data: [] };
 
-  return tests.map((test) => {
+  return tests.filter((test) => sectionRows
+    .filter((section) => section.test_id === test.id)
+    .every((section) => ["figure_sequence", "mathematical_equation", "latin_square", "mixed"].includes(section.section_type)))
+    .map((test) => {
     const testSections = sectionRows.filter(
       (section) => section.test_id === test.id,
     );
@@ -244,6 +251,7 @@ export async function getEditableAdminTest(
     );
   }
   if (sectionError) throw new Error("Unable to load this test’s sections.");
+  if ((sections ?? []).some((section) => !["figure_sequence", "mathematical_equation", "latin_square", "mixed"].includes(section.section_type))) return null;
 
   const sectionIds = (sections ?? []).map((section) => section.id);
   const { data: mappings, error: mappingError } = sectionIds.length
@@ -445,6 +453,14 @@ export async function updateAdminTestPublication(
     .maybeSingle();
   if (!test) throw new Error("Test not found.");
 
+  const { data: existingSections } = await admin
+    .from("test_sections")
+    .select("section_type")
+    .eq("test_id", testId);
+  if ((existingSections ?? []).some((section) => !["figure_sequence", "mathematical_equation", "latin_square", "mixed"].includes(section.section_type))) {
+    throw new Error("This legacy test is unavailable in the Core-only product.");
+  }
+
   if (action === "unpublish") {
     const { count } = await admin
       .from("test_attempts")
@@ -489,8 +505,10 @@ export async function updateAdminTestPublication(
       .from("questions")
       .select("id", { count: "exact", head: true })
       .in("id", questionIds)
+      .eq("module", "core")
       .eq("verification_status", "approved")
-      .eq("publication_status", "published");
+      .eq("publication_status", "published")
+      .is("deleted_at", null);
     if (count !== questionIds.length) {
       throw new Error(
         "Every assigned question must be approved and published.",

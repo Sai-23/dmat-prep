@@ -5,9 +5,9 @@ import type {
   GenerationDifficulty,
 } from "../types";
 
-export const LATIN_SQUARE_GENERATOR_VERSION = "latin-squares@1.0.0";
-export const LATIN_SQUARE_SOLVER_VERSION = "latin-squares-solver@1.0.0";
-export const LATIN_SQUARE_VALIDATOR_VERSION = "latin-squares-validator@1.0.0";
+export const LATIN_SQUARE_GENERATOR_VERSION = "latin-squares@2.0.0";
+export const LATIN_SQUARE_SOLVER_VERSION = "latin-squares-solver@2.0.0";
+export const LATIN_SQUARE_VALIDATOR_VERSION = "latin-squares-validator@2.0.0";
 export const LATIN_SQUARE_SIZE = 5 as const;
 export const DEFAULT_LATIN_SYMBOLS = ["A", "B", "C", "D", "E"] as const;
 
@@ -57,6 +57,16 @@ export type LatinDeduction = {
   reason: LatinDeductionReason;
   round: number;
   depth: number;
+  dependencies: LatinCoordinate[];
+};
+
+export type LatinTargetClassification = "direct" | "indirect" | "multi_stage";
+
+export type LatinDeductionAnalysis = {
+  deductions: LatinDeduction[];
+  targetInitialCandidateCount: number;
+  directRowEliminations: number;
+  directColumnEliminations: number;
 };
 
 export type LatinTargetSolverOutcome = {
@@ -72,6 +82,16 @@ export type LatinDifficultyMetrics = {
   targetRound: number;
   totalDeductions: number;
   visibleClues: number;
+  targetInitialCandidateCount: number;
+  directRowEliminations: number;
+  directColumnEliminations: number;
+  forcedPlacementsBeforeTarget: number;
+  rowDependencyCount: number;
+  columnDependencyCount: number;
+  usefulClueCount: number;
+  clueDistanceFromTarget: number;
+  workingMemoryLoad: number;
+  classification: LatinTargetClassification;
   score: number;
 };
 

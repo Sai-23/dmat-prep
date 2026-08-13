@@ -9,7 +9,7 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 import {
   completePracticeAction,
@@ -32,8 +32,14 @@ import type {
   PracticeFilters,
   PracticeQuestion,
 } from "@/lib/practice/schemas";
+import type { LatinSquareStructuredData } from "@/lib/generation/latin-squares";
+import type { MathematicalEquationStructuredData } from "@/lib/generation/mathematical-equations";
+import type { FigureSequencePresentation } from "@/lib/generation/figure-sequences";
 import { formatStudyTime } from "@/lib/dashboard/recommendations";
 import { NativePracticeResponse } from "./native-practice-response";
+import { LatinSquarePracticeFeedback } from "./latin-square-practice-feedback";
+import { MathematicalEquationPracticeFeedback } from "./mathematical-equation-practice-feedback";
+import { FigureSequencePracticeFeedback } from "./figure-sequence-practice-feedback";
 import { PracticeAnswerFeedback } from "./practice-answer-feedback";
 import type { PracticeAnswer } from "@/lib/practice/schemas";
 import { PRACTICE_TIMING_MODES } from "@/lib/practice/timing";
@@ -49,6 +55,7 @@ type Feedback = {
   isCorrect: boolean;
   correctAnswer: unknown;
   explanation: string;
+  explanationTrace?: unknown;
   timeSpentSeconds: number;
   targetPaceSeconds: number;
 };
@@ -65,13 +72,35 @@ const questionTypeLabels: Record<string, string> = {
   figure_sequence: "Figure sequence",
   mathematical_equation: "Mathematical equation",
   latin_square: "Latin square",
-  computer_science: "Computer Science",
 };
 
 function formatTimer(seconds: number) {
   const minutes = Math.floor(seconds / 60);
   const remainder = seconds % 60;
   return `${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
+}
+
+function ResponseTiming({
+  responseSeconds,
+  targetSeconds,
+  className = "",
+}: {
+  responseSeconds: number;
+  targetSeconds: number;
+  className?: string;
+}) {
+  return (
+    <dl className={`grid gap-3 text-sm sm:grid-cols-2 ${className}`}>
+      <div>
+        <dt className="font-semibold">Response time</dt>
+        <dd>{formatTimer(responseSeconds)}</dd>
+      </div>
+      <div>
+        <dt className="font-semibold">Target pace</dt>
+        <dd>{formatTimer(targetSeconds)}</dd>
+      </div>
+    </dl>
+  );
 }
 
 export function PracticeExperience({
@@ -84,7 +113,7 @@ export function PracticeExperience({
   initialSession?: (Session & { questionIndex: number }) | null;
 }) {
   const [config, setConfig] = useState<PracticeConfig>({
-    module: initialConfig?.module ?? "computer_science",
+    module: initialConfig?.module ?? "core",
     questionType: initialConfig?.questionType ?? "any",
     topic: initialConfig?.topic,
     difficulty: initialConfig?.difficulty ?? "any",
@@ -120,12 +149,7 @@ export function PracticeExperience({
       return question.response.kind === "symbol_assignment" &&
         question.response.symbols.every((symbol) => Number.isInteger(selectedAnswer.values[symbol]));
     }
-    if (question.response.kind !== "subject_answers") return false;
-    const data = question.structuredData && typeof question.structuredData === "object"
-      ? question.structuredData as { questions?: unknown[] }
-      : {};
-    return (data.questions?.length ?? 0) > 0 &&
-      Object.keys(selectedAnswer.answers).length === data.questions?.length;
+    return false;
   })();
 
   useEffect(() => {
@@ -178,13 +202,7 @@ export function PracticeExperience({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.attemptId, session?.expiresAt, result]);
 
-  const questionTypeOptions = useMemo(
-    () =>
-      config.module === "core"
-        ? ["any", "figure_sequence", "mathematical_equation", "latin_square"]
-        : ["any", "computer_science"],
-    [config.module],
-  );
+  const questionTypeOptions = ["any", "figure_sequence", "mathematical_equation", "latin_square"];
 
   const startSession = () => {
     setError(null);
@@ -245,6 +263,7 @@ export function PracticeExperience({
         isCorrect: response.isCorrect,
         correctAnswer: response.correctAnswer,
         explanation: response.explanation ?? "",
+        explanationTrace: response.explanationTrace,
         timeSpentSeconds: response.timeSpentSeconds,
         targetPaceSeconds: response.targetPaceSeconds,
       });
@@ -411,11 +430,62 @@ export function PracticeExperience({
               answer={selectedAnswer}
               correctAnswer={feedback?.correctAnswer}
               disabled={Boolean(feedback) || isPending}
+              hideAnswerInputs={Boolean(feedback) && question.response?.kind === "symbol_assignment"}
               onChange={setSelectedAnswer}
               question={question}
             />
 
-            {feedback ? (
+            {feedback && question.questionType === "latin_square" && question.structuredData ? (
+              <div className="space-y-4">
+                <LatinSquarePracticeFeedback
+                  correctAnswer={feedback.correctAnswer}
+                  data={question.structuredData as LatinSquareStructuredData}
+                  isCorrect={feedback.isCorrect}
+                  selectedAnswer={selectedAnswer?.kind === "single_choice" ? selectedAnswer.optionId : null}
+                  trace={feedback.explanationTrace}
+                />
+                <ResponseTiming
+                  responseSeconds={feedback.timeSpentSeconds}
+                  targetSeconds={feedback.targetPaceSeconds}
+                />
+              </div>
+            ) : feedback &&
+              question.questionType === "mathematical_equation" &&
+              question.response?.kind === "symbol_assignment" &&
+              selectedAnswer?.kind === "symbol_assignment" &&
+              question.structuredData ? (
+              <div className="space-y-4">
+                <MathematicalEquationPracticeFeedback
+                  correctAnswer={feedback.correctAnswer}
+                  data={question.structuredData as MathematicalEquationStructuredData}
+                  isCorrect={feedback.isCorrect}
+                  selectedAnswer={selectedAnswer.values}
+                  trace={feedback.explanationTrace}
+                />
+                <ResponseTiming
+                  responseSeconds={feedback.timeSpentSeconds}
+                  targetSeconds={feedback.targetPaceSeconds}
+                />
+              </div>
+            ) : feedback &&
+              question.questionType === "figure_sequence" &&
+              question.response?.kind === "two_stage_single_choice" &&
+              selectedAnswer?.kind === "two_stage_single_choice" &&
+              question.structuredData ? (
+              <div className="space-y-4">
+                <FigureSequencePracticeFeedback
+                  correctAnswer={feedback.correctAnswer}
+                  isCorrect={feedback.isCorrect}
+                  selectedAnswer={selectedAnswer.optionIds}
+                  sequence={question.structuredData as FigureSequencePresentation}
+                  trace={feedback.explanationTrace}
+                />
+                <ResponseTiming
+                  responseSeconds={feedback.timeSpentSeconds}
+                  targetSeconds={feedback.targetPaceSeconds}
+                />
+              </div>
+            ) : feedback ? (
               <div
                 className={
                   feedback.isCorrect
@@ -438,16 +508,11 @@ export function PracticeExperience({
                 <div className="mt-4">
                   <PracticeAnswerFeedback answer={selectedAnswer} correctAnswer={feedback.correctAnswer} question={question} />
                 </div>
-                <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                  <div>
-                    <dt className="font-semibold">Response time</dt>
-                    <dd>{formatTimer(feedback.timeSpentSeconds)}</dd>
-                  </div>
-                  <div>
-                    <dt className="font-semibold">Target pace</dt>
-                    <dd>{formatTimer(feedback.targetPaceSeconds)}</dd>
-                  </div>
-                </dl>
+                <ResponseTiming
+                  className="mt-4"
+                  responseSeconds={feedback.timeSpentSeconds}
+                  targetSeconds={feedback.targetPaceSeconds}
+                />
               </div>
             ) : null}
 
@@ -457,7 +522,7 @@ export function PracticeExperience({
                 onClick={() => setReportOpen((open) => !open)}
                 type="button"
               >
-                Report question
+                Report a problem with this question
               </button>
               {reportOpen ? (
                 <div className="mt-4 grid gap-3">
@@ -571,7 +636,6 @@ export function PracticeExperience({
               }
               value={config.module}
             >
-              <option value="computer_science">Computer Science</option>
               <option value="core">Core Module</option>
             </select>
           </label>

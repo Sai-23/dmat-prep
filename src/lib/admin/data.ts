@@ -11,7 +11,6 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { MathematicalEquationQuestion } from "@/lib/generation/mathematical-equations";
 import type { LatinSquareQuestion } from "@/lib/generation/latin-squares";
 import type { FigureSequenceQuestion } from "@/lib/generation/figure-sequences";
-import type { GeneratedComputerScienceUnit } from "@/lib/generation/computer-science";
 import { evaluatePublication } from "@/lib/admin/publishing-policy";
 
 function questionSnapshot(
@@ -39,7 +38,7 @@ async function writeAudit(
 }
 
 async function getGeneratedFingerprints(
-  questionType: "mathematical_equation" | "latin_square" | "figure_sequence" | "computer_science",
+  questionType: "mathematical_equation" | "latin_square" | "figure_sequence",
 ): Promise<Set<string>> {
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin
@@ -72,11 +71,24 @@ export function getGeneratedFigureFingerprints(): Promise<Set<string>> {
   return getGeneratedFingerprints("figure_sequence");
 }
 
-export function getGeneratedComputerScienceFingerprints(): Promise<Set<string>> {
-  return getGeneratedFingerprints("computer_science");
+function assertGeneratedQuestionCanPublish(candidate: {
+  questionType: string;
+  structuredData: unknown;
+  metadata: unknown;
+}) {
+  const decision = evaluatePublication({
+    verificationStatus: "approved",
+    questionType: candidate.questionType,
+    sourceType: "generated",
+    optionCount: 0,
+    correctOptionId: null,
+    structuredData: candidate.structuredData,
+    metadata: candidate.metadata,
+  });
+  if (!decision.allowed) throw new Error(decision.reason);
 }
 
-export async function createGeneratedEquationDraft(
+export async function createPublishedGeneratedEquation(
   actorId: string,
   question: MathematicalEquationQuestion,
 ): Promise<string> {
@@ -84,7 +96,7 @@ export async function createGeneratedEquationDraft(
     !question.validation.valid ||
     !question.validation.checks.every((validationCheck) => validationCheck.passed)
   ) {
-    throw new Error("Only fully validated generated questions can be saved.");
+    throw new Error("Only fully validated generated questions can be published.");
   }
 
   const admin = createSupabaseAdminClient();
@@ -94,12 +106,20 @@ export async function createGeneratedEquationDraft(
     presentation: question.presentation,
     response: question.response,
     solutionPath: question.solutionPath,
+    reasoningPath: question.reasoningPath,
+    fastestMethod: question.fastestMethod,
   };
   const metadata = {
     generation: question.metadata,
     validation: question.validation,
     correctAnswer: question.correctAnswer,
   };
+  assertGeneratedQuestionCanPublish({
+    questionType: "mathematical_equation",
+    structuredData,
+    metadata,
+  });
+  const publishedAt = new Date().toISOString();
   const { data: saved, error: saveError } = await admin
     .from("questions")
     .insert({
@@ -114,8 +134,10 @@ export async function createGeneratedEquationDraft(
       explanation: question.explanation,
       estimated_time_seconds: question.estimatedSolveTimeSeconds,
       source_type: "generated",
-      verification_status: "draft",
-      publication_status: "draft",
+      verification_status: "approved",
+      publication_status: "published",
+      published_at: publishedAt,
+      retired_at: null,
       created_by: actorId,
       updated_by: actorId,
     })
@@ -126,22 +148,22 @@ export async function createGeneratedEquationDraft(
     if (saveError?.code === "23505") {
       throw new Error("A generated question with this fingerprint already exists.");
     }
-    throw new Error("Unable to save the generated equation draft.");
+    throw new Error("Unable to publish the generated equation.");
   }
 
   const { error: versionError } = await admin.from("question_versions").insert({
     question_id: saved.id,
     version: 1,
     snapshot: questionSnapshot(saved, []),
-    change_summary: "Validated generated equation saved as a draft.",
+    change_summary: "Validated generated equation published automatically.",
     changed_by: actorId,
   });
   if (versionError) {
     await admin.from("questions").delete().eq("id", saved.id);
-    throw new Error("The draft could not be versioned and was not retained.");
+    throw new Error("The equation could not be versioned and was not retained.");
   }
 
-  await writeAudit(actorId, "question.generated", saved.id, {
+  await writeAudit(actorId, "question.generated_published", saved.id, {
     fingerprint: question.metadata.fingerprint,
     seed: question.metadata.seed,
     generator_version: question.metadata.generatorVersion,
@@ -150,7 +172,7 @@ export async function createGeneratedEquationDraft(
   return saved.id as string;
 }
 
-export async function createGeneratedLatinDraft(
+export async function createPublishedGeneratedLatin(
   actorId: string,
   question: LatinSquareQuestion,
 ): Promise<string> {
@@ -158,7 +180,7 @@ export async function createGeneratedLatinDraft(
     !question.validation.valid ||
     !question.validation.checks.every((validationCheck) => validationCheck.passed)
   ) {
-    throw new Error("Only fully validated generated Latin squares can be saved.");
+    throw new Error("Only fully validated generated Latin squares can be published.");
   }
 
   const admin = createSupabaseAdminClient();
@@ -174,6 +196,12 @@ export async function createGeneratedLatinDraft(
     validation: question.validation,
     correctAnswer: question.correctAnswer,
   };
+  assertGeneratedQuestionCanPublish({
+    questionType: "latin_square",
+    structuredData,
+    metadata,
+  });
+  const publishedAt = new Date().toISOString();
   const { data: saved, error: saveError } = await admin
     .from("questions")
     .insert({
@@ -188,8 +216,10 @@ export async function createGeneratedLatinDraft(
       explanation: question.explanation,
       estimated_time_seconds: question.estimatedSolveTimeSeconds,
       source_type: "generated",
-      verification_status: "draft",
-      publication_status: "draft",
+      verification_status: "approved",
+      publication_status: "published",
+      published_at: publishedAt,
+      retired_at: null,
       created_by: actorId,
       updated_by: actorId,
     })
@@ -200,22 +230,22 @@ export async function createGeneratedLatinDraft(
     if (saveError?.code === "23505") {
       throw new Error("A generated Latin square with this fingerprint already exists.");
     }
-    throw new Error("Unable to save the generated Latin-square draft.");
+    throw new Error("Unable to publish the generated Latin square.");
   }
 
   const { error: versionError } = await admin.from("question_versions").insert({
     question_id: saved.id,
     version: 1,
     snapshot: questionSnapshot(saved, []),
-    change_summary: "Validated generated Latin square saved as a draft.",
+    change_summary: "Validated generated Latin square published automatically.",
     changed_by: actorId,
   });
   if (versionError) {
     await admin.from("questions").delete().eq("id", saved.id);
-    throw new Error("The Latin-square draft could not be versioned and was not retained.");
+    throw new Error("The Latin square could not be versioned and was not retained.");
   }
 
-  await writeAudit(actorId, "question.generated", saved.id, {
+  await writeAudit(actorId, "question.generated_published", saved.id, {
     fingerprint: question.metadata.fingerprint,
     seed: question.metadata.seed,
     generator_version: question.metadata.generatorVersion,
@@ -224,14 +254,33 @@ export async function createGeneratedLatinDraft(
   return saved.id as string;
 }
 
-export async function createGeneratedFigureDraft(
+export async function createPublishedGeneratedFigure(
   actorId: string,
   question: FigureSequenceQuestion,
 ): Promise<string> {
   if (!question.validation.valid || !question.validation.checks.every((item) => item.passed)) {
-    throw new Error("Only fully validated generated figure sequences can be saved.");
+    throw new Error("Only fully validated generated figure sequences can be published.");
   }
   const admin = createSupabaseAdminClient();
+  const structuredData = {
+    schemaVersion: 1,
+    task: question.structuredData,
+    presentation: question.presentation,
+    response: question.response,
+    sequence: question.sequence,
+    solutionFrames: question.solutionFrames,
+  };
+  const metadata = {
+    generation: question.metadata,
+    validation: question.validation,
+    correctAnswer: question.correctAnswer,
+  };
+  assertGeneratedQuestionCanPublish({
+    questionType: "figure_sequence",
+    structuredData,
+    metadata,
+  });
+  const publishedAt = new Date().toISOString();
   const { data: saved, error: saveError } = await admin.from("questions").insert({
     module: "core",
     question_type: "figure_sequence",
@@ -239,98 +288,38 @@ export async function createGeneratedFigureDraft(
     subtopic: question.subtopic ?? null,
     difficulty: question.metadata.calculatedDifficulty,
     question_text: question.presentation.prompt,
-    structured_data: {
-      schemaVersion: 1,
-      task: question.structuredData,
-      presentation: question.presentation,
-      response: question.response,
-      sequence: question.sequence,
-      solutionFrames: question.solutionFrames,
-    },
-    metadata: {
-      generation: question.metadata,
-      validation: question.validation,
-      correctAnswer: question.correctAnswer,
-    },
+    structured_data: structuredData,
+    metadata,
     explanation: question.explanation,
     estimated_time_seconds: question.estimatedSolveTimeSeconds,
     source_type: "generated",
-    verification_status: "draft",
-    publication_status: "draft",
+    verification_status: "approved",
+    publication_status: "published",
+    published_at: publishedAt,
+    retired_at: null,
     created_by: actorId,
     updated_by: actorId,
   }).select("*").single();
   if (saveError || !saved) {
     if (saveError?.code === "23505") throw new Error("A generated figure sequence with this fingerprint already exists.");
-    throw new Error("Unable to save the generated figure-sequence draft.");
+    throw new Error("Unable to publish the generated figure sequence.");
   }
   const { error: versionError } = await admin.from("question_versions").insert({
     question_id: saved.id,
     version: 1,
     snapshot: questionSnapshot(saved, []),
-    change_summary: "Validated generated figure sequence saved as a draft.",
+    change_summary: "Validated generated figure sequence published automatically.",
     changed_by: actorId,
   });
   if (versionError) {
     await admin.from("questions").delete().eq("id", saved.id);
-    throw new Error("The figure-sequence draft could not be versioned and was not retained.");
+    throw new Error("The figure sequence could not be versioned and was not retained.");
   }
-  await writeAudit(actorId, "question.generated", saved.id, {
+  await writeAudit(actorId, "question.generated_published", saved.id, {
     fingerprint: question.metadata.fingerprint,
     seed: question.metadata.seed,
     generator_version: question.metadata.generatorVersion,
     validator_version: question.metadata.validatorVersion,
-  });
-  return saved.id as string;
-}
-
-export async function createGeneratedComputerScienceDraft(
-  actorId: string,
-  unit: GeneratedComputerScienceUnit,
-): Promise<string> {
-  if (!unit.validation.valid || !unit.validation.checks.every((item) => item.passed)) {
-    throw new Error("Only fully validated generated subject units can be saved.");
-  }
-  const admin = createSupabaseAdminClient();
-  const { data: saved, error: saveError } = await admin.from("questions").insert({
-    module: "computer_science",
-    question_type: "computer_science",
-    subject: "Computer Science",
-    topic: unit.topic,
-    subtopic: unit.family,
-    difficulty: unit.metadata.calculatedDifficulty,
-    question_text: unit.stimulus.title ?? "Computer Science subject stimulus",
-    structured_data: { schemaVersion: unit.schemaVersion, family: unit.family, stimulus: unit.stimulus, questions: unit.questions, task: unit.structuredData },
-    metadata: { generation: unit.metadata, validation: unit.validation },
-    explanation: unit.questions.map((question) => question.explanation).join("\n"),
-    estimated_time_seconds: unit.questions.reduce((total, question) => total + question.estimatedSolveTimeSeconds, 0),
-    source_type: "generated",
-    verification_status: "draft",
-    publication_status: "draft",
-    created_by: actorId,
-    updated_by: actorId,
-  }).select("*").single();
-  if (saveError || !saved) {
-    if (saveError?.code === "23505") throw new Error("A generated subject unit with this fingerprint already exists.");
-    throw new Error("Unable to save the generated subject-unit draft.");
-  }
-  const { error: versionError } = await admin.from("question_versions").insert({
-    question_id: saved.id,
-    version: 1,
-    snapshot: questionSnapshot(saved, []),
-    change_summary: `Validated ${unit.topic} subject unit saved as a draft.`,
-    changed_by: actorId,
-  });
-  if (versionError) {
-    await admin.from("questions").delete().eq("id", saved.id);
-    throw new Error("The subject-unit draft could not be versioned and was not retained.");
-  }
-  await writeAudit(actorId, "question.generated", saved.id, {
-    fingerprint: unit.metadata.fingerprint,
-    seed: unit.metadata.seed,
-    generator_version: unit.metadata.generatorVersion,
-    validator_version: unit.metadata.validatorVersion,
-    family: unit.family,
   });
   return saved.id as string;
 }
@@ -345,27 +334,34 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
     openReports,
     publishedTests,
   ] = await Promise.all([
-    admin.from("questions").select("id", { count: "exact", head: true }),
+    admin.from("questions").select("id", { count: "exact", head: true }).eq("module", "core").is("deleted_at", null),
     admin
       .from("questions")
       .select("id", { count: "exact", head: true })
+      .eq("module", "core")
+      .is("deleted_at", null)
       .eq("verification_status", "under_review"),
     admin
       .from("questions")
       .select("id", { count: "exact", head: true })
+      .eq("module", "core")
+      .is("deleted_at", null)
       .eq("verification_status", "approved")
       .eq("publication_status", "draft"),
     admin
       .from("questions")
       .select("id", { count: "exact", head: true })
+      .eq("module", "core")
+      .is("deleted_at", null)
       .eq("publication_status", "published"),
     admin
       .from("question_reports")
-      .select("id", { count: "exact", head: true })
+      .select("id, questions!inner(module)", { count: "exact", head: true })
+      .eq("questions.module", "core")
       .eq("status", "open"),
     admin
       .from("tests")
-      .select("id", { count: "exact", head: true })
+      .select("id")
       .eq("is_published", true)
       .neq("id", "00000000-0000-4000-8000-000000000001"),
   ]);
@@ -378,13 +374,27 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
     throw new Error("Unable to load administrative metrics.");
   }
 
+  const publishedTestIds = (publishedTests.data ?? []).map((test) => test.id);
+  const { data: publishedSections, error: publishedSectionsError } = publishedTestIds.length
+    ? await admin
+        .from("test_sections")
+        .select("test_id, section_type")
+        .in("test_id", publishedTestIds)
+    : { data: [], error: null };
+  if (publishedSectionsError) throw new Error("Unable to load administrative metrics.");
+  const coreSectionTypes = new Set(["figure_sequence", "mathematical_equation", "latin_square", "mixed"]);
+  const publishedCoreTestCount = publishedTestIds.filter((testId) => {
+    const sections = (publishedSections ?? []).filter((section) => section.test_id === testId);
+    return sections.length > 0 && sections.every((section) => coreSectionTypes.has(section.section_type));
+  }).length;
+
   return {
     totalQuestions: total.count ?? 0,
     underReview: underReview.count ?? 0,
     approvedDrafts: approvedDrafts.count ?? 0,
     publishedQuestions: published.count ?? 0,
     openReports: openReports.count ?? 0,
-    publishedTests: publishedTests.count ?? 0,
+    publishedTests: publishedCoreTestCount,
   };
 }
 
@@ -492,6 +502,8 @@ export async function getEditableQuestion(
       "id, module, question_type, subject, topic, subtopic, difficulty, question_text, passage, code, formula, structured_data, image_url, explanation, estimated_time_seconds, source_type, correct_option_id, verification_status, publication_status",
     )
     .eq("id", questionId)
+    .eq("module", "core")
+    .is("deleted_at", null)
     .maybeSingle();
   if (error) throw new Error("Unable to load this question.");
   if (!question) return null;
@@ -556,6 +568,8 @@ export async function updateQuestion(
     .from("questions")
     .select("id, version, verification_status, publication_status")
     .eq("id", questionId)
+    .eq("module", "core")
+    .is("deleted_at", null)
     .maybeSingle();
   if (
     !current ||
@@ -672,6 +686,8 @@ export async function getReviewQueue(
     .select(
       "id, module, question_type, topic, subtopic, difficulty, question_text, passage, code, formula, explanation, correct_option_id, verification_status, publication_status, version, created_at, source_type, structured_data, metadata",
     )
+    .eq("module", "core")
+    .is("deleted_at", null)
     .order("updated_at", { ascending: false })
     .limit(100);
   query = includeAdminStates
@@ -734,6 +750,8 @@ export async function reviewQuestion(
     .from("questions")
     .select("id, verification_status")
     .eq("id", input.questionId)
+    .eq("module", "core")
+    .is("deleted_at", null)
     .maybeSingle();
   if (!question || question.verification_status !== "under_review") {
     throw new Error("Only questions under review can receive a decision.");
@@ -777,6 +795,8 @@ export async function updateQuestionLifecycle(
     .from("questions")
     .select("id, verification_status, publication_status, correct_option_id, question_type, source_type, structured_data, metadata")
     .eq("id", questionId)
+    .eq("module", "core")
+    .is("deleted_at", null)
     .maybeSingle();
   if (!question) throw new Error("Question not found.");
 
@@ -830,4 +850,43 @@ export async function updateQuestionLifecycle(
   }
 
   await writeAudit(actorId, `question.lifecycle.${action}`, questionId);
+}
+
+export async function softDeleteQuestion(
+  actorId: string,
+  questionId: string,
+): Promise<{ status: "deleted" | "already_deleted" }> {
+  const admin = createSupabaseAdminClient();
+  const { data: question, error: loadError } = await admin
+    .from("questions")
+    .select("id, deleted_at")
+    .eq("id", questionId)
+    .eq("module", "core")
+    .maybeSingle();
+  if (loadError) throw new Error("Could not delete this question. Try again.");
+  if (!question) throw new Error("Question not found.");
+  if (question.deleted_at) return { status: "already_deleted" };
+
+  const deletedAt = new Date().toISOString();
+  const { data: deleted, error: deleteError } = await admin
+    .from("questions")
+    .update({
+      deleted_at: deletedAt,
+      deleted_by: actorId,
+      publication_status: "retired",
+      retired_at: deletedAt,
+      updated_by: actorId,
+    })
+    .eq("id", questionId)
+    .is("deleted_at", null)
+    .select("id")
+    .maybeSingle();
+  if (deleteError) throw new Error("Could not delete this question. Try again.");
+  if (!deleted) return { status: "already_deleted" };
+
+  await writeAudit(actorId, "question.deleted", questionId, {
+    deletion: "soft",
+    deleted_at: deletedAt,
+  });
+  return { status: "deleted" };
 }

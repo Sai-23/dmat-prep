@@ -52,10 +52,9 @@ export type UserRole = "student" | "reviewer" | "admin";
 export type QuestionType =
   | "figure_sequence"
   | "mathematical_equation"
-  | "latin_square"
-  | "computer_science";
+  | "latin_square";
 
-export type ModuleType = "core" | "computer_science";
+export type ModuleType = "core";
 
 export type Question = {
   id: string;

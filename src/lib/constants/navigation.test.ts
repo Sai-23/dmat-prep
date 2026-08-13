@@ -21,6 +21,15 @@ describe("navigationForRoles", () => {
     );
   });
 
+  it("contains no retired subject-module Admin navigation", () => {
+    const navigation = JSON.stringify(adminNavigation).toLowerCase();
+    expect(navigation).not.toContain("computer_science");
+    expect(navigation).not.toContain("computer science");
+    expect(navigation).not.toContain("testlet");
+    expect(navigation).not.toContain("provider");
+    expect(navigation).not.toContain("critic");
+  });
+
   it("does not expose role-restricted administration links to students", () => {
     expect(navigationForRoles(adminNavigation, ["student"])).toEqual([]);
   });

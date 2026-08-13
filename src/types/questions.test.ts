@@ -6,11 +6,11 @@ describe("questionSchema", () => {
   it("accepts a valid question payload", () => {
     const result = questionSchema.safeParse({
       id: "1d25ac88-0083-4b72-b510-8090e1314982",
-      module: "computer_science",
-      questionType: "computer_science",
-      topic: "Programming and Algorithms",
+      module: "core",
+      questionType: "mathematical_equation",
+      topic: "Mathematical Equations",
       difficulty: "medium",
-      questionText: "What is the output of the algorithm?",
+      questionText: "Which value satisfies the equation?",
       options: [
         {
           id: "7c5b4c67-e7a6-4307-b828-ff1110b5ef5b",
@@ -34,7 +34,7 @@ describe("questionSchema", () => {
         },
       ],
       correctOptionId: "7c5b4c67-e7a6-4307-b828-ff1110b5ef5b",
-      explanation: "Tracing the loop shows one pass through all n elements.",
+      explanation: "Substitution verifies the selected value.",
       estimatedTimeSeconds: 75,
       sourceType: "manual",
       verificationStatus: "draft",

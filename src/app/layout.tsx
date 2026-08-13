@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(env.NEXT_PUBLIC_APP_URL),
   title: "dMAT Prep",
   description:
-    "Independent preparation platform for realistic dMAT practice, mock tests, Computer Science preparation, and performance analytics.",
+    "Independent preparation platform for realistic dMAT Core practice, mock tests, and performance analytics.",
 };
 
 async function getProfileTheme(): Promise<ThemePreference> {

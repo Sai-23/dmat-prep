@@ -7,6 +7,10 @@ import type {
 } from "../types";
 import { calculateEquationDifficulty } from "./difficulty";
 import {
+  mathematicalEquationSemanticValue,
+  mathematicalEquationStructuralSignature,
+} from "./fingerprint";
+import {
   equationVariables,
   evaluateExpression,
   mathematicalEquationSolver,
@@ -67,10 +71,23 @@ function validateExpression(
     if (expression.left.kind !== "constant" && expression.right.kind !== "constant") {
       issues.push(issue("format", "nonlinear_multiplication", "Multiplication must use an integer constant coefficient.", path));
     }
+    const coefficient = expression.left.kind === "constant"
+      ? expression.left.value
+      : expression.right.kind === "constant"
+        ? expression.right.value
+        : 0;
+    if (Math.abs(coefficient) < 2 || Math.abs(coefficient) > 6) {
+      issues.push(issue("format", "coefficient_out_of_range", "Multiplication coefficients must be from 2 through 6.", path));
+    }
   }
   if (expression.operator === "divide") {
-    if (expression.right.kind !== "constant" || expression.right.value === 0) {
-      issues.push(issue("safety", "invalid_divisor", "Division must use a non-zero integer constant divisor.", path));
+    if (
+      (expression.right.kind === "constant" &&
+        (expression.right.value === 0 || Math.abs(expression.right.value) < 2 || Math.abs(expression.right.value) > 6)) ||
+      (expression.right.kind === "variable" && !declared.has(expression.right.symbol)) ||
+      expression.right.kind === "operation"
+    ) {
+      issues.push(issue("safety", "invalid_divisor", "Division must use a safe variable or a divisor from 2 through 6.", path));
     }
   }
 }
@@ -94,6 +111,46 @@ function sameAssignment(
   return variables.every((symbol) => first[symbol] === second[symbol]);
 }
 
+function solutionStepEquationIndices(
+  step: MathematicalEquationCandidate["solutionPath"][number],
+): number[] {
+  return [step.equationIndex, ...(step.supportingEquationIndices ?? [])];
+}
+
+function possibleTargetValues(
+  equations: readonly MathematicalEquation[],
+  targetSymbol: string,
+  knownAssignment: Readonly<VariableAssignment>,
+  domain: MathematicalEquationCandidate["structuredData"]["domain"],
+): number[] {
+  const unresolved = [...new Set(equations.flatMap((equation) => [...equationVariables(equation)]))]
+    .filter((symbol) => !Object.hasOwn(knownAssignment, symbol));
+  if (!unresolved.includes(targetSymbol)) return [];
+  const possible = new Set<number>();
+  const partial: VariableAssignment = { ...knownAssignment };
+  const references = equations.map(equationVariables);
+  const search = (index: number): void => {
+    if (index === unresolved.length) {
+      if (equations.every((equation) => equationIsTrue(equation, partial))) {
+        possible.add(partial[targetSymbol]);
+      }
+      return;
+    }
+    const symbol = unresolved[index];
+    for (let value = domain.minimum; value <= domain.maximum; value += 1) {
+      partial[symbol] = value;
+      const contradicted = equations.some((equation, equationIndex) =>
+        [...references[equationIndex]].every((item) => Object.hasOwn(partial, item)) &&
+        !equationIsTrue(equation, partial),
+      );
+      if (!contradicted) search(index + 1);
+    }
+    delete partial[symbol];
+  };
+  search(0);
+  return [...possible].sort((first, second) => first - second);
+}
+
 function validateSolutionPath(
   candidate: MathematicalEquationCandidate,
   assignment: Readonly<VariableAssignment>,
@@ -105,36 +162,64 @@ function validateSolutionPath(
     return [issue("explanation", "incomplete_solution_path", "The solution path must solve every variable exactly once.")];
   }
 
+  const usedEquations = new Set<number>();
+
   candidate.solutionPath.forEach((step, stepIndex) => {
     const path = `solutionPath.${stepIndex}`;
-    const equation = equations[step.equationIndex];
-    if (!equation || !variables.includes(step.targetSymbol) || solved.has(step.targetSymbol)) {
+    const equationIndices = solutionStepEquationIndices(step);
+    const selectedEquations = equationIndices.map((index) => equations[index]);
+    if (
+      new Set(equationIndices).size !== equationIndices.length ||
+      selectedEquations.some((equation) => !equation) ||
+      !variables.includes(step.targetSymbol) ||
+      solved.has(step.targetSymbol)
+    ) {
       issues.push(issue("explanation", "invalid_solution_step", "A solution step has an invalid equation or target.", path));
       return;
     }
+    equationIndices.forEach((index) => usedEquations.add(index));
     const reportedKnown = [...step.knownSymbols].sort();
     const actualKnown = [...solved].sort();
     if (reportedKnown.join("\u001f") !== actualKnown.join("\u001f")) {
       issues.push(issue("explanation", "incorrect_known_symbols", "The solution step does not accurately report prior deductions.", path));
       return;
     }
-    const references = equationVariables(equation);
+    const references = new Set(selectedEquations.flatMap((equation) => [...equationVariables(equation)]));
+    if (!references.has(step.targetSymbol)) {
+      issues.push(issue("explanation", "non_deductive_step", "The step does not constrain its target variable.", path));
+      return;
+    }
+    const actualDependencies = [...references]
+      .filter((symbol) => symbol !== step.targetSymbol && solved.has(symbol))
+      .sort();
     if (
-      !references.has(step.targetSymbol) ||
-      [...references].some((symbol) => symbol !== step.targetSymbol && !solved.has(symbol))
+      step.dependencySymbols &&
+      [...step.dependencySymbols].sort().join("\u001f") !== actualDependencies.join("\u001f")
     ) {
-      issues.push(issue("explanation", "non_deductive_step", "The step depends on a variable that has not yet been solved.", path));
+      issues.push(issue("explanation", "incorrect_dependencies", "The step does not accurately report the values it substitutes.", path));
+      return;
+    }
+    const unresolvedOtherSymbols = [...references].filter((symbol) =>
+      symbol !== step.targetSymbol && !solved.has(symbol),
+    );
+    const combinesEquations = equationIndices.length > 1 || step.reasoning === "combine_equations";
+    if (unresolvedOtherSymbols.length > 0 && !combinesEquations) {
+      issues.push(issue("explanation", "non_deductive_step", "An indirect deduction must explicitly combine its supporting equations.", path));
+      return;
+    }
+    if (step.reasoning === "combine_equations" && equationIndices.length < 2) {
+      issues.push(issue("explanation", "missing_supporting_equation", "A combine-equations step requires at least two equations.", path));
       return;
     }
     const knownAssignment = Object.fromEntries(
       [...solved].map((symbol) => [symbol, assignment[symbol]]),
     );
-    const possibleValues: number[] = [];
-    for (let value = domain.minimum; value <= domain.maximum; value += 1) {
-      if (equationIsTrue(equation, { ...knownAssignment, [step.targetSymbol]: value })) {
-        possibleValues.push(value);
-      }
-    }
+    const possibleValues = possibleTargetValues(
+      selectedEquations as MathematicalEquation[],
+      step.targetSymbol,
+      knownAssignment,
+      domain,
+    );
     if (
       possibleValues.length !== 1 ||
       possibleValues[0] !== assignment[step.targetSymbol] ||
@@ -145,6 +230,9 @@ function validateSolutionPath(
     }
     solved.add(step.targetSymbol);
   });
+  if (usedEquations.size !== equations.length) {
+    issues.push(issue("explanation", "unused_equation", "Every equation must contribute to the verified deduction path."));
+  }
   return issues;
 }
 
@@ -164,7 +252,7 @@ export class MathematicalEquationValidator
   ): ValidationResult<MathematicalEquationValidationSolution> {
     const checks: ValidationCheck[] = [];
     const issues: ValidationIssue[] = [];
-    const { variables, equations, domain } = candidate.structuredData;
+    const { variables, equations, domain, dependencyModel } = candidate.structuredData;
     const declared = new Set(variables);
 
     if (
@@ -178,7 +266,16 @@ export class MathematicalEquationValidator
       equations.length !== variables.length ||
       domain.minimum !== MATHEMATICAL_EQUATION_DOMAIN.minimum ||
       domain.maximum !== MATHEMATICAL_EQUATION_DOMAIN.maximum ||
-      domain.integersOnly !== true
+      domain.integersOnly !== true ||
+      !dependencyModel ||
+      dependencyModel.solveOrder.length !== variables.length ||
+      [...dependencyModel.solveOrder].sort().join("") !== [...variables].sort().join("") ||
+      !Number.isInteger(dependencyModel.hiddenGroupingCount) ||
+      Number(dependencyModel.hiddenGroupingCount) < 0 ||
+      !Number.isInteger(dependencyModel.relationshipReversalCount) ||
+      Number(dependencyModel.relationshipReversalCount) < 0 ||
+      !Number.isInteger(dependencyModel.meaningfulReasoningSteps) ||
+      Number(dependencyModel.meaningfulReasoningSteps) < 2
     ) {
       issues.push(issue("format", "invalid_system_shape", "The equation system does not match the supported dMAT format."));
     }
@@ -186,11 +283,24 @@ export class MathematicalEquationValidator
       validateExpression(equation.left, declared, `equations.${index}.left`, issues);
       validateExpression(equation.right, declared, `equations.${index}.right`, issues);
     });
+    const normalizedEquations = mathematicalEquationSemanticValue(candidate).equations;
+    if (new Set(normalizedEquations.map((equation) => JSON.stringify(equation))).size !== equations.length) {
+      issues.push(issue("format", "redundant_equation", "Every equation must contribute a distinct relationship."));
+    }
     if (
       candidate.response.kind !== "symbol_assignment" ||
       [...candidate.response.symbols].sort().join("") !== [...variables].sort().join("")
     ) {
       issues.push(issue("format", "invalid_response", "The response must request every declared variable."));
+    }
+    if (
+      !Array.isArray(candidate.reasoningPath) ||
+      candidate.reasoningPath.length < 2 ||
+      candidate.reasoningPath.some((step) => typeof step !== "string" || !step.trim()) ||
+      typeof candidate.fastestMethod !== "string" ||
+      candidate.fastestMethod.trim().length < 20
+    ) {
+      issues.push(issue("format", "invalid_reasoning_metadata", "Reasoning-path and fastest-method metadata must be complete."));
     }
     checks.push(check("format", !issues.some((item) => item.stage === "format")));
     checks.push(check("safety", !issues.some((item) => item.stage === "safety")));
@@ -232,12 +342,43 @@ export class MathematicalEquationValidator
     }
 
     const explanationIssues = validateSolutionPath(candidate, assignment);
+    if (
+      candidate.reasoningPath.some((step) => !candidate.explanation.includes(step)) ||
+      variables.some((symbol) => !candidate.explanation.includes(`${symbol} = ${assignment[symbol]}`))
+    ) {
+      explanationIssues.push(issue("explanation", "reasoning_path_mismatch", "The stored reasoning path must support the complete verified solution."));
+    }
+    const solvedBefore = new Set<string>();
+    const actualEdges = candidate.solutionPath.flatMap((step) => {
+      const references = new Set(
+        solutionStepEquationIndices(step).flatMap((index) => {
+          const equation = equations[index];
+          return equation ? [...equationVariables(equation)] : [];
+        }),
+      );
+      const edges = [...references]
+        .filter((symbol) => symbol !== step.targetSymbol && solvedBefore.has(symbol))
+        .map((source) => `${source}>${step.targetSymbol}`);
+      solvedBefore.add(step.targetSymbol);
+      return edges;
+    }).sort();
+    const storedEdges = dependencyModel.edges.map((edge) => `${edge.source}>${edge.target}`).sort();
+    if (
+      dependencyModel.solveOrder.join("|") !== candidate.solutionPath.map((step) => step.targetSymbol).join("|") ||
+      actualEdges.join("|") !== storedEdges.join("|")
+    ) {
+      explanationIssues.push(issue("explanation", "dependency_model_mismatch", "The stored dependency model does not match the verified solve path."));
+    }
     checks.push(check("explanation", explanationIssues.length === 0));
     if (explanationIssues.length) return { valid: false, issues: explanationIssues, checks };
 
     const calculated = calculateEquationDifficulty(candidate);
     const difficultyMatches = calculated.difficulty === requestedDifficulty;
-    checks.push(check("difficulty", difficultyMatches, calculated.metrics));
+    checks.push(check("difficulty", difficultyMatches, {
+      ...calculated.metrics,
+      family: dependencyModel.family,
+      structuralSignature: mathematicalEquationStructuralSignature(candidate),
+    }));
     if (!difficultyMatches) {
       return {
         valid: false,
@@ -260,4 +401,3 @@ export class MathematicalEquationValidator
 }
 
 export const mathematicalEquationValidator = new MathematicalEquationValidator();
-

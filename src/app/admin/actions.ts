@@ -3,70 +3,43 @@
 import { revalidatePath } from "next/cache";
 
 import {
-  createGeneratedEquationDraft,
-  createGeneratedLatinDraft,
-  createGeneratedFigureDraft,
-  createGeneratedComputerScienceDraft,
+  createPublishedGeneratedEquation,
+  createPublishedGeneratedLatin,
+  createPublishedGeneratedFigure,
   createQuestion,
   getGeneratedEquationFingerprints,
   getGeneratedLatinFingerprints,
   getGeneratedFigureFingerprints,
-  getGeneratedComputerScienceFingerprints,
   reviewQuestion,
+  softDeleteQuestion,
   updateQuestionLifecycle,
   updateQuestion,
 } from "@/lib/admin/data";
 import {
   equationGenerationRequestSchema,
-  generatedEquationSaveSchema,
-  generatedLatinSaveSchema,
-  generatedFigureSaveSchema,
   figureGenerationRequestSchema,
-  computerScienceGenerationRequestSchema,
-  generatedComputerScienceSaveSchema,
   latinGenerationRequestSchema,
 } from "@/lib/admin/generation-schemas";
 import {
   generateValidatedMathematicalEquation,
-  reproduceValidatedMathematicalEquation,
+  mathematicalEquationStructuralSignature,
   type MathematicalEquationQuestion,
 } from "@/lib/generation/mathematical-equations";
 import {
   generateValidatedLatinSquare,
-  reproduceValidatedLatinSquare,
   type LatinSquareQuestion,
 } from "@/lib/generation/latin-squares";
 import {
   generateValidatedFigureSequence,
-  reproduceValidatedFigureSequence,
   type FigureSequenceQuestion,
 } from "@/lib/generation/figure-sequences";
-import {
-  generateValidatedBooleanSubjectTestlet,
-  generateValidatedCircuitSubjectTestlet,
-  generateValidatedProgrammingSubjectTestlet,
-  generateValidatedRecursionSubjectTestlet,
-  generateValidatedOopSubjectTestlet,
-  reproduceValidatedBooleanSubjectTestlet,
-  reproduceValidatedCircuitSubjectTestlet,
-  reproduceValidatedProgrammingSubjectTestlet,
-  reproduceValidatedRecursionSubjectTestlet,
-  reproduceValidatedOopSubjectTestlet,
-  adaptSubjectTestletForDelivery,
-  applyAiPresentation,
-  acceptCriticResult,
-  validateSubjectTestlet,
-  type SubjectTestlet,
-  type GeneratedComputerScienceUnit,
-  type LogicTestletSize,
-} from "@/lib/generation/computer-science";
-import { generateOpenAiPresentation, reviewWithOpenAiCritic } from "@/lib/generation/computer-science/testlets/openai-hybrid.server";
 import {
   saveAdminTest,
   updateAdminTestPublication,
 } from "@/lib/admin/test-data";
 import {
   questionAuthoringSchema,
+  questionDeleteSchema,
   questionEditIdSchema,
   questionLifecycleSchema,
   questionReviewSchema,
@@ -97,13 +70,14 @@ export type EquationPreviewResponse =
       error: null;
       baseSeed: string;
       questions: MathematicalEquationQuestion[];
+      questionIds: string[];
     }
-  | { error: string; baseSeed?: undefined; questions?: undefined };
+  | { error: string; baseSeed?: undefined; questions?: undefined; questionIds?: undefined };
 
 export async function generateEquationPreviewAction(
   input: unknown,
 ): Promise<EquationPreviewResponse> {
-  await requireRole(["admin"]);
+  const { user } = await requireRole(["admin"]);
   const parsed = equationGenerationRequestSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid generation request." };
@@ -112,6 +86,7 @@ export async function generateEquationPreviewAction(
   try {
     const baseSeed = parsed.data.seed ?? crypto.randomUUID();
     const fingerprints = await getGeneratedEquationFingerprints();
+    const structuralSignatures = new Set<string>();
     const questions: MathematicalEquationQuestion[] = [];
     for (let index = 0; index < parsed.data.quantity; index += 1) {
       const seed =
@@ -119,57 +94,36 @@ export async function generateEquationPreviewAction(
       const question = generateValidatedMathematicalEquation(
         { seed, difficulty: parsed.data.difficulty },
         fingerprints,
+        structuralSignatures,
       );
       fingerprints.add(question.metadata.fingerprint);
+      structuralSignatures.add(mathematicalEquationStructuralSignature(question));
       questions.push(question);
     }
-    return { error: null, baseSeed, questions };
-  } catch (error) {
-    return {
-      error:
-        error instanceof Error
-          ? error.message
-          : "Unable to generate a validated preview.",
-    };
-  }
-}
-
-export async function saveGeneratedEquationAction(input: unknown) {
-  const { user } = await requireRole(["admin"]);
-  const parsed = generatedEquationSaveSchema.safeParse(input);
-  if (!parsed.success) return { error: "The generated-question provenance is invalid." };
-
-  try {
-    const question = reproduceValidatedMathematicalEquation(
-      { seed: parsed.data.seed, difficulty: parsed.data.difficulty },
-      parsed.data.attemptCount,
-    );
-    if (question.metadata.fingerprint !== parsed.data.fingerprint) {
-      return { error: "The preview could not be reproduced exactly and was not saved." };
+    const questionIds: string[] = [];
+    for (const question of questions) {
+      questionIds.push(await createPublishedGeneratedEquation(user.id, question));
     }
-    const questionId = await createGeneratedEquationDraft(user.id, question);
-    revalidatePath("/admin");
-    revalidatePath("/admin/generate");
-    revalidatePath("/admin/review");
-    return { error: null, questionId };
+    revalidateGeneratedQuestionPaths();
+    return { error: null, baseSeed, questions, questionIds };
   } catch (error) {
     return {
       error:
         error instanceof Error
           ? error.message
-          : "Unable to save the generated equation draft.",
+          : "Unable to generate and publish validated equations.",
     };
   }
 }
 
 export type LatinPreviewResponse =
-  | { error: null; baseSeed: string; questions: LatinSquareQuestion[] }
-  | { error: string; baseSeed?: undefined; questions?: undefined };
+  | { error: null; baseSeed: string; questions: LatinSquareQuestion[]; questionIds: string[] }
+  | { error: string; baseSeed?: undefined; questions?: undefined; questionIds?: undefined };
 
 export async function generateLatinPreviewAction(
   input: unknown,
 ): Promise<LatinPreviewResponse> {
-  await requireRole(["admin"]);
+  const { user } = await requireRole(["admin"]);
   const parsed = latinGenerationRequestSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid generation request." };
@@ -188,51 +142,28 @@ export async function generateLatinPreviewAction(
       fingerprints.add(question.metadata.fingerprint);
       questions.push(question);
     }
-    return { error: null, baseSeed, questions };
-  } catch (error) {
-    return {
-      error:
-        error instanceof Error
-          ? error.message
-          : "Unable to generate a validated Latin-square preview.",
-    };
-  }
-}
-
-export async function saveGeneratedLatinAction(input: unknown) {
-  const { user } = await requireRole(["admin"]);
-  const parsed = generatedLatinSaveSchema.safeParse(input);
-  if (!parsed.success) return { error: "The Latin-square provenance is invalid." };
-
-  try {
-    const question = reproduceValidatedLatinSquare(
-      { seed: parsed.data.seed, difficulty: parsed.data.difficulty },
-      parsed.data.attemptCount,
-    );
-    if (question.metadata.fingerprint !== parsed.data.fingerprint) {
-      return { error: "The Latin-square preview could not be reproduced exactly and was not saved." };
+    const questionIds: string[] = [];
+    for (const question of questions) {
+      questionIds.push(await createPublishedGeneratedLatin(user.id, question));
     }
-    const questionId = await createGeneratedLatinDraft(user.id, question);
-    revalidatePath("/admin");
-    revalidatePath("/admin/generate");
-    revalidatePath("/admin/review");
-    return { error: null, questionId };
+    revalidateGeneratedQuestionPaths();
+    return { error: null, baseSeed, questions, questionIds };
   } catch (error) {
     return {
       error:
         error instanceof Error
           ? error.message
-          : "Unable to save the generated Latin-square draft.",
+          : "Unable to generate and publish validated Latin squares.",
     };
   }
 }
 
 export type FigurePreviewResponse =
-  | { error: null; baseSeed: string; questions: FigureSequenceQuestion[] }
-  | { error: string; baseSeed?: undefined; questions?: undefined };
+  | { error: null; baseSeed: string; questions: FigureSequenceQuestion[]; questionIds: string[] }
+  | { error: string; baseSeed?: undefined; questions?: undefined; questionIds?: undefined };
 
 export async function generateFigurePreviewAction(input: unknown): Promise<FigurePreviewResponse> {
-  await requireRole(["admin"]);
+  const { user } = await requireRole(["admin"]);
   const parsed = figureGenerationRequestSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid generation request." };
   try {
@@ -245,109 +176,23 @@ export async function generateFigurePreviewAction(input: unknown): Promise<Figur
       fingerprints.add(question.metadata.fingerprint);
       questions.push(question);
     }
-    return { error: null, baseSeed, questions };
+    const questionIds: string[] = [];
+    for (const question of questions) {
+      questionIds.push(await createPublishedGeneratedFigure(user.id, question));
+    }
+    revalidateGeneratedQuestionPaths();
+    return { error: null, baseSeed, questions, questionIds };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Unable to generate a validated figure-sequence preview." };
+    return { error: error instanceof Error ? error.message : "Unable to generate and publish validated figure sequences." };
   }
 }
 
-export async function saveGeneratedFigureAction(input: unknown) {
-  const { user } = await requireRole(["admin"]);
-  const parsed = generatedFigureSaveSchema.safeParse(input);
-  if (!parsed.success) return { error: "The figure-sequence provenance is invalid." };
-  try {
-    const question = reproduceValidatedFigureSequence(
-      { seed: parsed.data.seed, difficulty: parsed.data.difficulty },
-      parsed.data.attemptCount,
-    );
-    if (question.metadata.fingerprint !== parsed.data.fingerprint) {
-      return { error: "The figure-sequence preview could not be reproduced exactly and was not saved." };
-    }
-    const questionId = await createGeneratedFigureDraft(user.id, question);
-    revalidatePath("/admin");
-    revalidatePath("/admin/generate");
-    revalidatePath("/admin/review");
-    return { error: null, questionId };
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : "Unable to save the generated figure-sequence draft." };
-  }
-}
-
-export type ComputerSciencePreviewResponse =
-  | { error: null; baseSeed: string; questions: GeneratedComputerScienceUnit[] }
-  | { error: string; baseSeed?: undefined; questions?: undefined };
-
-export async function generateComputerSciencePreviewAction(input: unknown): Promise<ComputerSciencePreviewResponse> {
-  await requireRole(["admin"]);
-  const parsed = computerScienceGenerationRequestSchema.safeParse(input);
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid generation request." };
-  try {
-    const baseSeed = parsed.data.seed ?? crypto.randomUUID();
-    const fingerprints = await getGeneratedComputerScienceFingerprints();
-    const questions: GeneratedComputerScienceUnit[] = [];
-    for (let index = 0; index < parsed.data.quantity; index += 1) {
-      const seed = parsed.data.quantity === 1 ? baseSeed : `${baseSeed}:${index + 1}`;
-      const configuration = { seed, difficulty: parsed.data.difficulty, targetSize: parsed.data.targetSize as LogicTestletSize };
-      let unit = parsed.data.family === "programming_trace"
-        ? generateValidatedProgrammingSubjectTestlet(configuration, fingerprints)
-        : parsed.data.family === "programming_recursion"
-          ? generateValidatedRecursionSubjectTestlet(configuration, fingerprints)
-          : parsed.data.family === "programming_oop"
-            ? generateValidatedOopSubjectTestlet(configuration, fingerprints)
-        : parsed.data.family === "combinational_circuits"
-          ? generateValidatedCircuitSubjectTestlet(configuration, fingerprints)
-          : generateValidatedBooleanSubjectTestlet(configuration, fingerprints);
-      if (parsed.data.generationMode === "hybrid_dynamic") {
-        if (!("testlet" in unit) || !["programming_testlet", "recursion_testlet", "oop_testlet"].includes(unit.family)) throw new Error("Hybrid presentation is currently available for Programming testlets only.");
-        const presentation = await generateOpenAiPresentation(unit.testlet);
-        const presented = applyAiPresentation(unit.testlet, presentation.value, { model: presentation.model });
-        const criticResponse = await reviewWithOpenAiCritic(presented);
-        const reviewed = acceptCriticResult(presented, criticResponse.value);
-        if (reviewed.critic.decision !== "PASS") throw new Error(`AI critic ${reviewed.critic.decision.toLowerCase().replaceAll("_", " ")}: ${reviewed.critic.reasonCodes.join(", ") || reviewed.critic.summary}`);
-        unit = adaptSubjectTestletForDelivery(reviewed.testlet, configuration, unit.family);
-      }
-      fingerprints.add(unit.metadata.fingerprint);
-      questions.push(unit);
-    }
-    return { error: null, baseSeed, questions };
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : "Unable to generate a validated subject unit." };
-  }
-}
-
-export async function saveGeneratedComputerScienceAction(input: unknown) {
-  const { user } = await requireRole(["admin"]);
-  const parsed = generatedComputerScienceSaveSchema.safeParse(input);
-  if (!parsed.success) return { error: "The subject-unit provenance is invalid." };
-  try {
-    const configuration = { seed: parsed.data.seed, difficulty: parsed.data.difficulty, targetSize: parsed.data.targetSize as LogicTestletSize };
-    let unit = parsed.data.family === "programming_trace"
-      ? reproduceValidatedProgrammingSubjectTestlet(configuration, parsed.data.attemptCount)
-      : parsed.data.family === "programming_recursion"
-        ? reproduceValidatedRecursionSubjectTestlet(configuration, parsed.data.attemptCount)
-        : parsed.data.family === "programming_oop"
-          ? reproduceValidatedOopSubjectTestlet(configuration, parsed.data.attemptCount)
-      : parsed.data.family === "combinational_circuits"
-        ? reproduceValidatedCircuitSubjectTestlet(configuration, parsed.data.attemptCount)
-        : reproduceValidatedBooleanSubjectTestlet(configuration, parsed.data.attemptCount);
-    if (parsed.data.generationMode === "hybrid_dynamic") {
-      const snapshot = parsed.data.snapshot as SubjectTestlet;
-      const validation = validateSubjectTestlet(snapshot);
-      if (!validation.valid || snapshot.metadata.reviewStatus !== "validated" || snapshot.metadata.seed !== parsed.data.seed) return { error: "The accepted hybrid snapshot is invalid or has not passed critic review." };
-      if (!("testlet" in unit) || !["programming_testlet", "recursion_testlet", "oop_testlet"].includes(unit.family)) return { error: "Hybrid snapshots are supported for Programming only." };
-      unit = adaptSubjectTestletForDelivery(snapshot, configuration, unit.family);
-    }
-    if (unit.metadata.fingerprint !== parsed.data.fingerprint) {
-      return { error: "The subject-unit preview could not be reproduced exactly and was not saved." };
-    }
-    const questionId = await createGeneratedComputerScienceDraft(user.id, unit);
-    revalidatePath("/admin");
-    revalidatePath("/admin/generate");
-    revalidatePath("/admin/review");
-    return { error: null, questionId };
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : "Unable to save the generated subject-unit draft." };
-  }
+function revalidateGeneratedQuestionPaths() {
+  revalidatePath("/admin");
+  revalidatePath("/admin/generate");
+  revalidatePath("/admin/review");
+  revalidatePath("/practice");
+  revalidatePath("/tests");
 }
 
 export async function createQuestionAction(
@@ -463,6 +308,32 @@ export async function questionLifecycleAction(input: unknown) {
         error instanceof Error
           ? error.message
           : "Unable to update the question lifecycle.",
+    };
+  }
+}
+
+export async function deleteQuestionAction(input: unknown) {
+  const { user } = await requireRole(["admin"]);
+  const parsed = questionDeleteSchema.safeParse(input);
+  if (!parsed.success) return { error: "The question identifier is invalid." };
+
+  try {
+    const result = await softDeleteQuestion(user.id, parsed.data.questionId);
+    revalidateGeneratedQuestionPaths();
+    return {
+      error: null,
+      status: result.status,
+      message:
+        result.status === "already_deleted"
+          ? "Question was already removed from the active bank."
+          : "Question removed from the active bank.",
+    };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Could not delete this question. Try again.",
     };
   }
 }

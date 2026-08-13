@@ -1,0 +1,245 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
+import { calculateEquationDifficulty } from "./difficulty";
+import {
+  fingerprintMathematicalEquation,
+  mathematicalEquationStructuralSignature,
+} from "./fingerprint";
+import { mathematicalEquationGenerator } from "./generator";
+import { generateValidatedMathematicalEquation } from "./pipeline";
+import type {
+  EquationOperator,
+  MathematicalEquationQuestion,
+  MathematicalExpression,
+} from "./types";
+import { mathematicalEquationValidator } from "./validator";
+
+const ENABLED = process.env.DMAT_EQUATION_DIFFICULTY_AUDIT === "1";
+const SAMPLE_SIZE = 200;
+
+type Difficulty = "easy" | "medium" | "hard";
+type AuditRow = {
+  difficulty: Difficulty;
+  accepted: number;
+  candidatesAttempted: number;
+  averageVariableCount: number;
+  averageEquationCount: number;
+  exactVariableCountPercent: number;
+  dependencyDepthDistribution: Record<string, number>;
+  averageDependencyDepth: number;
+  averageSolveSteps: number;
+  averageSubstitutions: number;
+  averageOperatorVariety: number;
+  operatorDistribution: Record<EquationOperator, number>;
+  compoundExpressionFrequency: number;
+  averageCompoundExpressionCount: number;
+  branchFrequency: number;
+  recombinationFrequency: number;
+  indirectEntryFrequency: number;
+  averageWorkingMemory: number;
+  averageObviousEntryPointPenalty: number;
+  averageComplexityScore: number;
+  solverRejections: number;
+  solverRejectionRate: number;
+  duplicateRejections: number;
+  duplicateRejectionRate: number;
+  outOfDomainRejections: number;
+  outOfDomainRejectionRate: number;
+  difficultyRejections: number;
+  difficultyRejectionRate: number;
+  structuralSignatureCount: number;
+  structuralSignatureDiversity: number;
+  canonicalStructuralDuplicateRate: number;
+  familyDistribution: Record<string, number>;
+  dependencyGraphDistribution: Record<string, number>;
+};
+
+const rounded = (value: number) => Number(value.toFixed(3));
+const average = (values: number[]) => values.reduce((total, value) => total + value, 0) / values.length;
+
+function collectOperators(expression: MathematicalExpression, counts: Record<EquationOperator, number>) {
+  if (expression.kind !== "operation") return;
+  counts[expression.operator] += 1;
+  collectOperators(expression.left, counts);
+  collectOperators(expression.right, counts);
+}
+
+function auditDifficulty(difficulty: Difficulty): { row: AuditRow; samples: MathematicalEquationQuestion[] } {
+  const acceptedFingerprints = new Set<string>();
+  const questions: MathematicalEquationQuestion[] = [];
+  let candidatesAttempted = 0;
+  let solverRejections = 0;
+  let duplicateRejections = 0;
+  let outOfDomainRejections = 0;
+  let difficultyRejections = 0;
+
+  for (let index = 0; index < SAMPLE_SIZE; index += 1) {
+    const configuration = {
+      seed: `official-calibration-${difficulty}-${index}`,
+      difficulty,
+      maxAttempts: 100,
+    } as const;
+    const question = generateValidatedMathematicalEquation(configuration, acceptedFingerprints);
+    candidatesAttempted += question.metadata.attemptCount;
+    for (let attempt = 1; attempt < question.metadata.attemptCount; attempt += 1) {
+      const candidate = mathematicalEquationGenerator.generate(configuration, attempt);
+      const validation = mathematicalEquationValidator.validate(candidate, difficulty);
+      if (!validation.valid) {
+        if (validation.issues.some((issue) => issue.stage === "domain")) outOfDomainRejections += 1;
+        else if (validation.issues.some((issue) => issue.stage === "difficulty")) difficultyRejections += 1;
+        else solverRejections += 1;
+      } else if (acceptedFingerprints.has(fingerprintMathematicalEquation(candidate))) {
+        duplicateRejections += 1;
+      }
+    }
+    acceptedFingerprints.add(question.metadata.fingerprint);
+    questions.push(question);
+  }
+
+  const metrics = questions.map((question) => calculateEquationDifficulty(question).metrics);
+  const depths: Record<string, number> = {};
+  const families: Record<string, number> = {};
+  const dependencyGraphs: Record<string, number> = {};
+  const operators: Record<EquationOperator, number> = { add: 0, subtract: 0, multiply: 0, divide: 0 };
+  questions.forEach((question, index) => {
+    const depth = String(metrics[index].dependencyDepth);
+    depths[depth] = (depths[depth] ?? 0) + 1;
+    const family = question.structuredData.dependencyModel.family;
+    families[family] = (families[family] ?? 0) + 1;
+    const graph = `depth-${metrics[index].dependencyDepth}/branch-${metrics[index].branchCount}/recombine-${metrics[index].recombinationCount}/indirect-${metrics[index].indirectCouplingCount}`;
+    dependencyGraphs[graph] = (dependencyGraphs[graph] ?? 0) + 1;
+    question.structuredData.equations.forEach((equation) => {
+      collectOperators(equation.left, operators);
+      collectOperators(equation.right, operators);
+    });
+  });
+  const signatures = new Set(questions.map(mathematicalEquationStructuralSignature));
+  const expectedCount = difficulty === "easy" ? 2 : difficulty === "medium" ? 3 : 4;
+
+  return {
+    row: {
+      difficulty,
+      accepted: questions.length,
+      candidatesAttempted,
+      averageVariableCount: rounded(average(metrics.map((metric) => metric.variableCount))),
+      averageEquationCount: rounded(average(metrics.map((metric) => metric.equationCount))),
+      exactVariableCountPercent: rounded(
+        metrics.filter((metric) => metric.variableCount === expectedCount).length / metrics.length * 100,
+      ),
+      dependencyDepthDistribution: depths,
+      averageDependencyDepth: rounded(average(metrics.map((metric) => metric.dependencyDepth))),
+      averageSolveSteps: rounded(average(metrics.map((metric) => metric.solveStepCount))),
+      averageSubstitutions: rounded(average(metrics.map((metric) => metric.substitutionCount))),
+      averageOperatorVariety: rounded(average(metrics.map((metric) => metric.operatorVariety))),
+      operatorDistribution: operators,
+      compoundExpressionFrequency: rounded(metrics.filter((metric) => metric.compoundExpressionCount > 0).length / metrics.length),
+      averageCompoundExpressionCount: rounded(average(metrics.map((metric) => metric.compoundExpressionCount))),
+      branchFrequency: rounded(metrics.filter((metric) => metric.branchCount > 0).length / metrics.length),
+      recombinationFrequency: rounded(metrics.filter((metric) => metric.recombinationCount > 0).length / metrics.length),
+      indirectEntryFrequency: rounded(metrics.filter((metric) => metric.indirectCouplingCount > 0).length / metrics.length),
+      averageWorkingMemory: rounded(average(metrics.map((metric) => metric.workingMemoryEstimate))),
+      averageObviousEntryPointPenalty: rounded(average(metrics.map((metric) => metric.obviousEntryPointPenalty))),
+      averageComplexityScore: rounded(average(metrics.map((metric) => metric.score))),
+      solverRejections,
+      solverRejectionRate: rounded(solverRejections / candidatesAttempted),
+      duplicateRejections,
+      duplicateRejectionRate: rounded(duplicateRejections / candidatesAttempted),
+      outOfDomainRejections,
+      outOfDomainRejectionRate: rounded(outOfDomainRejections / candidatesAttempted),
+      difficultyRejections,
+      difficultyRejectionRate: rounded(difficultyRejections / candidatesAttempted),
+      structuralSignatureCount: signatures.size,
+      structuralSignatureDiversity: rounded(signatures.size / questions.length),
+      canonicalStructuralDuplicateRate: rounded(1 - signatures.size / questions.length),
+      familyDistribution: families,
+      dependencyGraphDistribution: dependencyGraphs,
+    },
+    samples: questions.slice(0, 15),
+  };
+}
+
+function escapeXml(value: string): string {
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+
+function formulae(question: MathematicalEquationQuestion): string[] {
+  return question.presentation.blocks
+    .filter((block): block is { kind: "formula"; expression: string } => block.kind === "formula")
+    .map((block) => block.expression);
+}
+
+function sampleSvg(question: MathematicalEquationQuestion, index: number): string {
+  const metrics = calculateEquationDifficulty(question).metrics;
+  const equations = formulae(question).map((equation, equationIndex) =>
+    `<rect x="90" y="${78 + equationIndex * 64}" width="820" height="48" rx="7" fill="#fff" stroke="#cbd5e1"/><text x="500" y="${110 + equationIndex * 64}" text-anchor="middle" font-family="monospace" font-size="23" font-weight="600" fill="#0f172a">${escapeXml(equation)}</text>`).join("");
+  const inputs = question.structuredData.variables.map((symbol, symbolIndex) =>
+    `<text x="${145 + symbolIndex * 220}" y="365" font-family="monospace" font-size="22" font-weight="700" fill="#0f172a">${symbol} =</text><rect x="${195 + symbolIndex * 220}" y="332" width="92" height="46" rx="7" fill="#fff" stroke="#64748b"/>`).join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="410" viewBox="0 0 1000 410"><rect width="1000" height="410" fill="#f8fafc"/><text x="45" y="34" font-family="sans-serif" font-size="21" font-weight="700" fill="#0f172a">${question.metadata.requestedDifficulty.toUpperCase()} sample ${index + 1}</text><text x="45" y="58" font-family="sans-serif" font-size="14" fill="#475569">${question.structuredData.dependencyModel.family.replaceAll("_", " ")} · depth ${metrics.dependencyDepth} · ${metrics.solveStepCount} estimated steps</text>${equations}${inputs}</svg>`;
+}
+
+function writeArtifacts(rows: AuditRow[], samples: MathematicalEquationQuestion[]) {
+  const directory = resolve(process.cwd(), "reports", "mathematical-equations");
+  mkdirSync(directory, { recursive: true });
+  const payload = { generatedAt: new Date().toISOString(), sampleSizePerDifficulty: SAMPLE_SIZE, rows };
+  writeFileSync(resolve(directory, "difficulty-audit.json"), `${JSON.stringify(payload, null, 2)}\n`);
+  const markdown = [
+    "# Mathematical Equations difficulty audit",
+    "",
+    `Accepted sample: ${SAMPLE_SIZE} per difficulty (${SAMPLE_SIZE * 3} total).`,
+    "",
+    "| Difficulty | Variables avg | Equations avg | Exact count | Depth avg | Solve steps avg | Substitutions avg | Operator variety avg | Compound freq. | Branch freq. | Recombine freq. | Indirect-entry freq. | Working memory avg | Obvious-entry penalty | Score avg | Solver reject rate | Difficulty reject rate | Canonical duplicate rate |",
+    "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+    ...rows.map((row) => `| ${row.difficulty} | ${row.averageVariableCount} | ${row.averageEquationCount} | ${row.exactVariableCountPercent}% | ${row.averageDependencyDepth} | ${row.averageSolveSteps} | ${row.averageSubstitutions} | ${row.averageOperatorVariety} | ${row.compoundExpressionFrequency} | ${row.branchFrequency} | ${row.recombinationFrequency} | ${row.indirectEntryFrequency} | ${row.averageWorkingMemory} | ${row.averageObviousEntryPointPenalty} | ${row.averageComplexityScore} | ${row.solverRejectionRate} | ${row.difficultyRejectionRate} | ${row.canonicalStructuralDuplicateRate} |`),
+    "",
+    "## Operator counts",
+    "",
+    ...rows.map((row) => `- ${row.difficulty}: add ${row.operatorDistribution.add}, subtract ${row.operatorDistribution.subtract}, multiply ${row.operatorDistribution.multiply}, divide ${row.operatorDistribution.divide}`),
+    "",
+    "## Structural-family distribution",
+    "",
+    ...rows.map((row) => `- ${row.difficulty}: ${Object.entries(row.familyDistribution).map(([family, count]) => `${family} ${count}`).join(", ")}`),
+    "",
+    "## Dependency-graph distribution",
+    "",
+    ...rows.map((row) => `- ${row.difficulty}: ${Object.entries(row.dependencyGraphDistribution).map(([graph, count]) => `${graph} ${count}`).join(", ")}`),
+    "",
+  ].join("\n");
+  writeFileSync(resolve(directory, "difficulty-audit.md"), markdown);
+  const cards = samples.map((question, index) => {
+    const sampleIndex = index % 15;
+    const name = `visual-${question.metadata.requestedDifficulty}-${sampleIndex + 1}.svg`;
+    writeFileSync(resolve(directory, name), sampleSvg(question, sampleIndex));
+    return `<figure><img alt="${question.metadata.requestedDifficulty} sample ${sampleIndex + 1}" src="./${name}"><figcaption>${question.metadata.requestedDifficulty} ${sampleIndex + 1}</figcaption></figure>`;
+  }).join("");
+  writeFileSync(resolve(directory, "visual-samples.html"), `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Mathematical Equations visual samples</title><style>body{font:14px system-ui;background:#e2e8f0;margin:24px}main{display:grid;gap:20px}figure{background:white;border-radius:12px;margin:0;padding:12px}img{display:block;width:100%;height:auto}figcaption{text-align:center;text-transform:capitalize}</style></head><body><h1>Mathematical Equations visual review</h1><main>${cards}</main></body></html>`);
+}
+
+describe.skipIf(!ENABLED)("Mathematical Equations 200-per-difficulty audit", () => {
+  it("meets the official-reference calibration gates", () => {
+    const audited = (["easy", "medium", "hard"] as const).map(auditDifficulty);
+    const rows = audited.map((entry) => entry.row);
+    writeArtifacts(rows, audited.flatMap((entry) => entry.samples));
+
+    expect(rows.every((row) => row.accepted === SAMPLE_SIZE)).toBe(true);
+    expect(rows.map((row) => row.exactVariableCountPercent)).toEqual([100, 100, 100]);
+    expect(rows[0].averageVariableCount).toBe(2);
+    expect(rows[1].averageVariableCount).toBe(3);
+    expect(rows[2].averageVariableCount).toBe(4);
+    expect(rows[1].compoundExpressionFrequency).toBe(1);
+    expect(rows[2].compoundExpressionFrequency).toBe(1);
+    expect(rows[1].recombinationFrequency + rows[1].branchFrequency).toBeGreaterThanOrEqual(1);
+    expect(rows[2].recombinationFrequency).toBe(1);
+    expect(rows[2].indirectEntryFrequency).toBeGreaterThan(0.35);
+    expect(rows[1].averageSolveSteps).toBeGreaterThan(rows[0].averageSolveSteps);
+    expect(rows[2].averageSolveSteps).toBeGreaterThan(rows[1].averageSolveSteps);
+    expect(rows[1].averageComplexityScore).toBeGreaterThan(rows[0].averageComplexityScore);
+    expect(rows[2].averageComplexityScore).toBeGreaterThan(rows[1].averageComplexityScore);
+    expect(rows.every((row) => row.outOfDomainRejections === 0)).toBe(true);
+    expect(rows.every((row) => row.difficultyRejections === 0)).toBe(true);
+    expect(rows[0].structuralSignatureCount).toBeGreaterThanOrEqual(18);
+    expect(rows[1].structuralSignatureCount).toBeGreaterThanOrEqual(30);
+    expect(rows[2].structuralSignatureCount).toBeGreaterThanOrEqual(45);
+    expect(rows.every((row) => Math.max(...Object.values(row.familyDistribution)) / SAMPLE_SIZE <= 0.4)).toBe(true);
+  }, 120_000);
+});

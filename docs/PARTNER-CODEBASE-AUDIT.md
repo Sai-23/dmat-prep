@@ -1,5 +1,7 @@
 # Partner Codebase Audit
 
+> Historical note (2026-08-09): this document records the pre-removal architecture and is retained only as an audit artifact. References to the former subject module do not describe the current Core-only product surface.
+
 Audit date: 2026-08-08
 
 Scope: the tracked repository at `E:\D\Projects\dMat_Prep`, inspected from source without changing application code or data. Ignored build products and dependencies were excluded from the inventory. The local `.env.local` was deliberately not read or reproduced.

@@ -39,6 +39,8 @@ export type Database = {
       }>;
       questions: DatabaseTable<
         Question & {
+          deleted_at?: string | null;
+          deleted_by?: string | null;
           metadata?: Json;
           structuredData?: Json;
         }

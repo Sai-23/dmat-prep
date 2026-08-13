@@ -6,10 +6,10 @@ const questionId = "11111111-1111-4111-8111-111111111111";
 
 function validInput() {
   return {
-    title: "Computer Science Mini Mock",
+    title: "Core Mini Mock",
     description: "A balanced assessment.",
     testType: "mini_mock",
-    module: "computer_science",
+    module: "core",
     instructions: "Answer every question before time expires.",
     isPremium: false,
     randomizeQuestions: true,
@@ -17,9 +17,9 @@ function validInput() {
     intent: "draft",
     sections: [
       {
-        title: "Algorithms",
-        module: "computer_science",
-        sectionType: "computer_science",
+        title: "Equations",
+        module: "core",
+        sectionType: "mathematical_equation",
         durationSeconds: 1800,
         questionIds: [questionId],
       },
@@ -35,18 +35,18 @@ describe("adminTestBuilderSchema", () => {
   it("rejects duplicate questions across sections", () => {
     const input = validInput();
     input.sections.push({
-      title: "Programming",
-      module: "computer_science",
-      sectionType: "computer_science",
+      title: "More equations",
+      module: "core",
+      sectionType: "mathematical_equation",
       durationSeconds: 1200,
       questionIds: [questionId],
     });
     expect(adminTestBuilderSchema.safeParse(input).success).toBe(false);
   });
 
-  it("rejects a section that conflicts with the test module", () => {
+  it("rejects an unsupported test module", () => {
     const input = validInput();
-    input.sections[0].module = "core";
+    input.module = "unsupported";
     expect(adminTestBuilderSchema.safeParse(input).success).toBe(false);
   });
 

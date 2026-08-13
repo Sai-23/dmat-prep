@@ -23,7 +23,6 @@ export function BookmarksLibrary({
 }) {
   const [bookmarks, setBookmarks] = useState(initialBookmarks);
   const [query, setQuery] = useState("");
-  const [moduleFilter, setModuleFilter] = useState("all");
   const [difficulty, setDifficulty] = useState("all");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -32,13 +31,12 @@ export function BookmarksLibrary({
     const normalizedQuery = query.trim().toLowerCase();
     return bookmarks.filter(
       (bookmark) =>
-        (moduleFilter === "all" || bookmark.module === moduleFilter) &&
         (difficulty === "all" || bookmark.difficulty === difficulty) &&
         (!normalizedQuery ||
           bookmark.questionText.toLowerCase().includes(normalizedQuery) ||
           bookmark.topic.toLowerCase().includes(normalizedQuery)),
     );
-  }, [bookmarks, difficulty, moduleFilter, query]);
+  }, [bookmarks, difficulty, query]);
 
   const remove = (questionId: string) => {
     setError(null);
@@ -60,7 +58,7 @@ export function BookmarksLibrary({
   return (
     <div className="space-y-5">
       <Card>
-        <CardContent className="grid gap-4 p-5 md:grid-cols-[1fr_180px_180px]">
+        <CardContent className="grid gap-4 p-5 md:grid-cols-[1fr_180px]">
           <label className="relative">
             <span className="sr-only">Search bookmarks</span>
             <Search className="pointer-events-none absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
@@ -72,16 +70,6 @@ export function BookmarksLibrary({
               value={query}
             />
           </label>
-          <select
-            aria-label="Filter by module"
-            className="h-12 rounded-xl border border-slate-300 bg-white px-4"
-            onChange={(event) => setModuleFilter(event.target.value)}
-            value={moduleFilter}
-          >
-            <option value="all">All modules</option>
-            <option value="core">Core Module</option>
-            <option value="computer_science">Computer Science</option>
-          </select>
           <select
             aria-label="Filter by difficulty"
             className="h-12 rounded-xl border border-slate-300 bg-white px-4"
@@ -110,14 +98,14 @@ export function BookmarksLibrary({
         <div className="grid gap-5 md:grid-cols-2">
           {visible.map((bookmark) => {
             const practiceUrl =
-              `/practice?question=${bookmark.id}&module=${bookmark.module}` as Route;
+              `/practice?question=${bookmark.id}&module=core` as Route;
             return (
               <Card className="flex flex-col" key={bookmark.id}>
                 <CardHeader>
                   <div className="flex flex-wrap gap-2">
                     <Badge>{bookmark.difficulty}</Badge>
                     <Badge variant="subtle">
-                      {bookmark.module.replace("_", " ")}
+                      Core Module
                     </Badge>
                   </div>
                   <CardTitle className="pt-2 text-lg leading-7">

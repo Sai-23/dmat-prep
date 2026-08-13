@@ -70,6 +70,8 @@ type OptionRow = {
   sort_order: number;
 };
 
+const CORE_SECTION_TYPES = new Set(["figure_sequence", "mathematical_equation", "latin_square", "mixed"]);
+
 async function hasPremiumAccess(userId: string) {
   const admin = createSupabaseAdminClient();
   const { data } = await admin
@@ -97,7 +99,13 @@ async function getPublishedTest(testId: string) {
     .maybeSingle();
 
   if (error) throw new Error("Unable to load this test.");
-  return data as PublishedTestRow | null;
+  if (!data) return null;
+  const { data: sections } = await admin
+    .from("test_sections")
+    .select("section_type")
+    .eq("test_id", testId);
+  if (!(sections ?? []).every((section) => CORE_SECTION_TYPES.has(section.section_type))) return null;
+  return data as PublishedTestRow;
 }
 
 async function assertTestAccess(userId: string, testId: string) {
@@ -128,7 +136,7 @@ export async function getTestCatalog(userId: string): Promise<TestCatalogItem[]>
   const [{ data: sectionData }, premiumAccess] = await Promise.all([
     admin
       .from("test_sections")
-      .select("id, test_id, title, duration_seconds, sort_order")
+      .select("id, test_id, title, section_type, duration_seconds, sort_order")
       .in("test_id", testIds),
     hasPremiumAccess(userId),
   ]);
@@ -142,7 +150,11 @@ export async function getTestCatalog(userId: string): Promise<TestCatalogItem[]>
     : { data: [] };
   const mappings = (mappingData ?? []) as MappingRow[];
 
-  return tests.map((test) => {
+  return tests
+    .filter((test) => sections
+      .filter((section) => section.test_id === test.id)
+      .every((section) => CORE_SECTION_TYPES.has(section.section_type)))
+    .map((test) => {
     const testSections = sections.filter((section) => section.test_id === test.id);
     const testSectionIds = new Set(testSections.map((section) => section.id));
     return {
@@ -262,7 +274,7 @@ export async function startTestAttempt(userId: string, testId: string) {
   const questionIds = orderedMappings.map((mapping) => mapping.question_id);
   const [{ data: questionData }, { data: optionData }] = await Promise.all([
     admin.from("questions").select("id, module, question_type, topic, subtopic, difficulty, question_text, passage, code, formula, table_data, image_url, estimated_time_seconds, structured_data, metadata, explanation, correct_option_id, source_type")
-      .in("id", questionIds).eq("verification_status", "approved").eq("publication_status", "published"),
+      .in("id", questionIds).eq("module", "core").eq("verification_status", "approved").eq("publication_status", "published").is("deleted_at", null),
     admin.from("question_options").select("id, question_id, label, content, sort_order").in("question_id", questionIds).order("sort_order"),
   ]);
   const questionById = new Map(((questionData ?? []) as SafeQuestionRow[]).map((question) => [question.id, question]));
@@ -297,7 +309,7 @@ export async function startTestAttempt(userId: string, testId: string) {
       status: "assembling",
       expires_at: null,
       randomization_seed: seed,
-      test_snapshot: { version: 1, title: test.title, examSpecVersion: "dmat-computer-science-2025-01-08", sections: sectionSnapshots },
+      test_snapshot: { version: 1, title: test.title, examSpecVersion: "dmat-core-2026-08-09", sections: sectionSnapshots },
     })
     .select("id")
     .single();

@@ -11,7 +11,6 @@ describe("question-bank publication policy", () => {
     ["mathematical_equation", { response: { kind: "symbol_assignment", symbols: ["A"] } }],
     ["latin_square", { response: { kind: "single_choice", options: [1, 2, 3, 4, 5] } }],
     ["figure_sequence", { response: { kind: "two_stage_single_choice", stages: [[], []] } }],
-    ["computer_science", { questions: [{ options: [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }], correctOptionId: "a" }] }],
   ])("publishes validated generated %s content without fake database options", (questionType, structuredData) => {
     expect(evaluatePublication({ verificationStatus: "approved", questionType, sourceType: "generated", optionCount: 0, correctOptionId: null, structuredData, metadata: validatedMetadata })).toEqual({ allowed: true });
   });
@@ -21,8 +20,8 @@ describe("question-bank publication policy", () => {
   });
 
   it("retains four-option requirements for conventional content", () => {
-    expect(evaluatePublication({ verificationStatus: "approved", questionType: "computer_science", sourceType: "manual", optionCount: 4, correctOptionId: "correct", structuredData: {}, metadata: {} }).allowed).toBe(true);
-    expect(evaluatePublication({ verificationStatus: "approved", questionType: "computer_science", sourceType: "manual", optionCount: 3, correctOptionId: "correct", structuredData: {}, metadata: {} }).allowed).toBe(false);
+    expect(evaluatePublication({ verificationStatus: "approved", questionType: "mathematical_equation", sourceType: "manual", optionCount: 4, correctOptionId: "correct", structuredData: {}, metadata: {} }).allowed).toBe(true);
+    expect(evaluatePublication({ verificationStatus: "approved", questionType: "mathematical_equation", sourceType: "manual", optionCount: 3, correctOptionId: "correct", structuredData: {}, metadata: {} }).allowed).toBe(false);
   });
 
   it("enforces student, reviewer, and admin permissions", () => {

@@ -6,22 +6,22 @@ import {
 } from "./schemas";
 
 const validQuestion = {
-  module: "computer_science",
-  questionType: "computer_science",
-  subject: "CS",
-  topic: "Algorithms",
+  module: "core",
+  questionType: "mathematical_equation",
+  subject: "",
+  topic: "Equations",
   subtopic: "",
   difficulty: "medium",
-  questionText: "Which algorithm has logarithmic search complexity?",
+  questionText: "Which value satisfies the displayed equation?",
   passage: "",
   code: "",
   formula: "",
   structuredData: "",
   imageUrl: "",
-  explanation: "Binary search halves the remaining search space at every step.",
+  explanation: "Substitution verifies the selected value in the equation.",
   estimatedTimeSeconds: "60",
   sourceType: "manual",
-  options: ["Linear search", "Binary search", "Bubble sort", "DFS"],
+  options: ["1", "2", "3", "4"],
   correctOptionIndex: "1",
   intent: "review",
 };
@@ -35,7 +35,7 @@ describe("question authoring validation", () => {
     expect(
       questionAuthoringSchema.safeParse({
         ...validQuestion,
-        module: "core",
+        module: "legacy",
       }).success,
     ).toBe(false);
   });

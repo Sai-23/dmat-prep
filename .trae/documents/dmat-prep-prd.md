@@ -1,5 +1,5 @@
 ## 1. Product Overview
-dMAT Prep is a production-ready independent preparation platform for students preparing for the Digital Master Test, starting with the Computer Science subject module and scalable to the full exam structure.
+dMAT Prep is a production-ready independent preparation platform for students preparing for the Digital Master Test Core Module.
 - It helps students understand the exam format, practice realistic question types, take timed tests, review performance, and improve weak areas with data-informed recommendations.
 - It positions itself as a serious, analytics-driven educational product with a clear independence disclaimer and no claimed affiliation with official dMAT authorities.
 
@@ -14,7 +14,7 @@ dMAT Prep is a production-ready independent preparation platform for students pr
 
 ### 2.2 Feature Module
 1. **Home**: hero, platform overview, exam overview, feature highlights, pricing preview, FAQ, disclaimer, diagnostic CTA
-2. **Exam Format**: exam structure, Core Module explanation, Computer Science module explanation, question-type overview
+2. **Exam Format**: Core Module structure and question-type overview
 3. **Practice**: configurable practice sessions by module, topic, difficulty, timing mode, source filter
 4. **Mock Tests**: realistic timed tests, section instructions, attempt start flow, full-screen focus mode
 5. **Dashboard**: student summary, recent attempts, recommendations, weak topics, upcoming study tasks
@@ -33,10 +33,10 @@ dMAT Prep is a production-ready independent preparation platform for students pr
 | Page Name | Module Name | Feature description |
 |-----------|-------------|---------------------|
 | Home | Hero section | “Prepare Smarter for the dMAT” headline, serious educational tone, diagnostic CTA |
-| Home | Overview sections | Exam format summary, Core Module overview, Computer Science module overview |
+| Home | Overview sections | Exam format summary and Core Module overview |
 | Home | Feature preview | Practice modes, mock tests, analytics, sample question preview, pricing preview, FAQ |
 | Home | Disclaimer | Show independent-platform disclaimer prominently in footer and supporting sections |
-| Exam Format | Structure overview | Explain Core Module and Computer Science sections with supported question types |
+| Exam Format | Structure overview | Explain Core Module sections and supported question types |
 | Practice | Session setup | Configure module, type, topic, difficulty, quantity, timing, and source filters |
 | Mock Tests | Test catalog | Show available mini tests and full mocks with duration, sections, and access tier |
 | Dashboard | Summary cards | Accuracy, attempts, time spent, weak topics, recommended next actions |

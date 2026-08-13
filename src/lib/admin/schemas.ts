@@ -35,16 +35,11 @@ export const questionAuthoringSchema = z
     intent: z.enum(["draft", "review", "correction"]),
   })
   .superRefine((value, context) => {
-    const expectedModule =
-      value.questionType === "computer_science" ? "computer_science" : "core";
-    if (value.module !== expectedModule) {
+    if (value.module !== "core") {
       context.addIssue({
         code: "custom",
         path: ["module"],
-        message:
-          value.questionType === "computer_science"
-            ? "Computer Science questions must use the Computer Science module."
-            : "This question type belongs to the Core module.",
+        message: "This question type belongs to the Core module.",
       });
     }
     if (new Set(value.options.map((option) => option.toLowerCase())).size !== 4) {
@@ -76,6 +71,10 @@ export const questionReviewSchema = z.object({
 export const questionLifecycleSchema = z.object({
   questionId: z.string().uuid(),
   action: z.enum(["submit_review", "publish", "retire"]),
+});
+
+export const questionDeleteSchema = z.object({
+  questionId: z.string().uuid(),
 });
 
 export const questionEditIdSchema = z.string().uuid();

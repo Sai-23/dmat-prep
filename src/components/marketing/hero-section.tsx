@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Clock3, LineChart, MonitorCog } from "lucide-react";
+import { ArrowRight, Clock3, LineChart, Shapes } from "lucide-react";
 
 import { DisclaimerBanner } from "@/components/marketing/disclaimer-banner";
 import { Badge } from "@/components/ui/badge";
@@ -13,9 +13,9 @@ const quickStats = [
     icon: Clock3,
   },
   {
-    title: "Computer Science",
-    description: "Scenario-based problem solving across algorithms, systems, databases, and networks.",
-    icon: MonitorCog,
+    title: "Core reasoning",
+    description: "Focused practice for figure sequences, mathematical equations, and Latin Squares.",
+    icon: Shapes,
   },
   {
     title: "Analytics",
@@ -34,8 +34,8 @@ export function HeroSection() {
             Prepare Smarter for the dMAT
           </h1>
           <p className="max-w-2xl text-lg leading-8 text-slate-600">
-            Realistic timed mocks, validated practice questions, Computer Science
-            preparation and detailed performance analytics.
+            Realistic timed mocks, validated Core practice questions, and detailed
+            performance analytics.
           </p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -58,7 +58,7 @@ export function HeroSection() {
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold text-slate-900">Mock Test Preview</p>
-                <p className="text-sm text-slate-600">Computer Science Mini Mock</p>
+                <p className="text-sm text-slate-600">Core Mini Mock</p>
               </div>
               <Badge variant="success">Focused UI</Badge>
             </div>

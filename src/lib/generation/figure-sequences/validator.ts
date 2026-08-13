@@ -1,7 +1,8 @@
 import type { GenerationDifficulty, QuestionValidator, ValidationCheck, ValidationIssue, ValidationResult } from "../types";
 import { calculateFigureDifficulty } from "./difficulty";
-import { visibleFrameValue } from "./distractors";
+import { figureFrameSimilarity, visibleFrameValue } from "./distractors";
 import { replayFigureSequence } from "./engine";
+import { figureStructuralSignature } from "./fingerprint";
 import { validateFigureFrameStructure } from "./validation";
 import { FIGURE_SEQUENCE_VALIDATOR_VERSION, type FigureSequenceCandidate, type FigureValidationSolution } from "./types";
 
@@ -34,7 +35,11 @@ export class FigureSequenceValidator implements QuestionValidator<FigureSequence
 
     const frames = [...visibleFrames, ...candidate.solutionFrames, ...candidate.sequence.missingMatrices.flatMap((matrix) => matrix.candidates.map((item) => item.frame))];
     const symbolIds = visibleFrames[0].symbols.map((symbol) => symbol.id).sort().join("|");
-    const domainValid = frames.every((frame) => validateFigureFrameStructure(grid, frame).valid && frame.symbols.map((symbol) => symbol.id).sort().join("|") === symbolIds) && new Set(rules.map((rule) => rule.symbolId)).size === rules.length && rules.every((rule) => symbolIds.split("|").includes(rule.symbolId));
+    const symbolIdList = symbolIds.split("|");
+    const domainValid = frames.every((frame) => validateFigureFrameStructure(grid, frame).valid && frame.symbols.map((symbol) => symbol.id).sort().join("|") === symbolIds) &&
+      rules.length === symbolIdList.length &&
+      new Set(rules.map((rule) => rule.symbolId)).size === rules.length &&
+      rules.every((rule) => symbolIdList.includes(rule.symbolId) && Boolean(rule.movement || rule.rotation || rule.colour));
     checks.push(check("domain", domainValid));
     if (!domainValid) return { valid: false, issues: [issue("domain", "invalid_figure_domain", "A matrix is structurally invalid or changes symbol identity.")], checks };
 
@@ -50,7 +55,13 @@ export class FigureSequenceValidator implements QuestionValidator<FigureSequence
     candidate.sequence.missingMatrices.forEach((matrix, index) => {
       const values = matrix.candidates.map((item) => visibleFrameValue(item.frame));
       const matches = matrix.candidates.filter((item) => sameFrame(item.frame, replayed[index + 4]));
-      if (new Set(values).size !== 3 || matches.length !== 1) unique = false;
+      const distractorsAreNearNeighbours = matrix.candidates
+        .filter((item) => !sameFrame(item.frame, replayed[index + 4]))
+        .every((item) => {
+          const expectedSimilarity = Math.max(0, symbolIdList.length - 1) / symbolIdList.length;
+          return figureFrameSimilarity(item.frame, replayed[index + 4]) === expectedSimilarity;
+        });
+      if (new Set(values).size !== 3 || matches.length !== 1 || !distractorsAreNearNeighbours) unique = false;
       else selected.push(matches[0].id);
     });
     const answerMatches = unique && selected.every((id, index) => id === candidate.correctAnswer[index]);
@@ -60,7 +71,10 @@ export class FigureSequenceValidator implements QuestionValidator<FigureSequence
 
     const calculated = calculateFigureDifficulty(candidate);
     const difficultyMatches = calculated.difficulty === requestedDifficulty;
-    checks.push(check("difficulty", difficultyMatches, calculated.metrics));
+    checks.push(check("difficulty", difficultyMatches, {
+      ...calculated.metrics,
+      structuralSignature: figureStructuralSignature(candidate),
+    }));
     if (!difficultyMatches) return { valid: false, issues: [issue("difficulty", "difficulty_mismatch", `Requested ${requestedDifficulty}, calculated ${calculated.difficulty}.`)], checks };
     const explanation = explain(candidate);
     checks.push(check("explanation", explanation.length > 0));

@@ -38,6 +38,7 @@ export type ResultQuestion = Omit<
   timeSpentSeconds: number;
   answer?: PracticeAnswer | null;
   correctAnswer?: unknown;
+  explanationTrace?: unknown;
 };
 
 export type AttemptResult = {

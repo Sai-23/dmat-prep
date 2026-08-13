@@ -35,6 +35,7 @@ import type {
   AdminQuestionBankItem,
   EditableAdminTest,
 } from "@/lib/admin/test-schemas";
+import { ADMIN_CORE_SECTION_TYPE_OPTIONS } from "@/lib/admin/core-options";
 
 type BuilderSection = EditableAdminTest["sections"][number] & {
   clientId: string;
@@ -68,8 +69,8 @@ export function TestBuilder({
     saveAdminTestAction,
     initialState,
   );
-  const [testModule, setTestModule] = useState(
-    initialTest?.module ?? "",
+  const [testModule, setTestModule] = useState<string>(
+    initialTest?.module ?? "core",
   );
   const [sections, setSections] = useState<BuilderSection[]>(() =>
     initialTest?.sections.length
@@ -212,7 +213,7 @@ export function TestBuilder({
                 className="h-12 w-full rounded-xl border border-slate-300 px-4 font-normal"
                 defaultValue={initialTest?.title ?? ""}
                 name="title"
-                placeholder="e.g. Computer Science Mini Mock 1"
+                placeholder="e.g. Core Mini Mock 1"
                 required
               />
             </label>
@@ -237,9 +238,7 @@ export function TestBuilder({
                 onChange={(event) => changeTestModule(event.target.value)}
                 value={testModule}
               >
-                <option value="">Mixed modules</option>
                 <option value="core">Core</option>
-                <option value="computer_science">Computer Science</option>
               </select>
             </label>
             <label className="space-y-2 text-sm font-semibold md:col-span-2">
@@ -415,10 +414,9 @@ export function TestBuilder({
                       value={section.sectionType}
                     >
                       <option value="mixed">Mixed</option>
-                      <option value="figure_sequence">Figure Sequences</option>
-                      <option value="mathematical_equation">Mathematical Equations</option>
-                      <option value="latin_square">Latin Squares</option>
-                      <option value="computer_science">Computer Science Subject</option>
+                      {ADMIN_CORE_SECTION_TYPE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
                     </select>
                   </label>
                   <label className="space-y-2 text-sm font-semibold">
@@ -434,11 +432,7 @@ export function TestBuilder({
                       }
                       value={testModule || section.module || ""}
                     >
-                      <option value="">Mixed</option>
                       <option value="core">Core</option>
-                      <option value="computer_science">
-                        Computer Science
-                      </option>
                     </select>
                   </label>
                   <label className="space-y-2 text-sm font-semibold">

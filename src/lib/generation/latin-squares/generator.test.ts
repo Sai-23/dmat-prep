@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { latinSquareGenerator } from "./generator";
+import { latinCandidatesFor } from "./difficulty";
 import {
   DEFAULT_LATIN_SYMBOLS,
   LATIN_SQUARE_SIZE,
@@ -31,12 +32,12 @@ describe("LatinSquareGenerator", () => {
   );
 
   it.each([
-    ["easy", 14, 17],
-    ["medium", 10, 13],
-    ["hard", 7, 9],
+    ["easy", 1, 2],
+    ["medium", 2, 3],
+    ["hard", 3, 4],
   ] as const)(
-    "constructs valid %s completed squares with provisional clue budgets",
-    (difficulty, minimumClues, maximumClues) => {
+    "constructs valid %s squares with target-calibrated candidate counts",
+    (difficulty, minimumCandidates, maximumCandidates) => {
       for (let seed = 0; seed < 250; seed += 1) {
         const candidate = latinSquareGenerator.generate(
           { seed: `latin-${seed}`, difficulty },
@@ -49,8 +50,12 @@ describe("LatinSquareGenerator", () => {
         expect(candidate.structuredData.grid[row][column]).toBeNull();
         expect(candidate.correctAnswer).toBe(candidate.completedGrid[row][column]);
         const clueCount = candidate.structuredData.grid.flat().filter(Boolean).length;
-        expect(clueCount).toBeGreaterThanOrEqual(minimumClues);
-        expect(clueCount).toBeLessThanOrEqual(maximumClues);
+        expect(clueCount).toBeGreaterThanOrEqual(10);
+        expect(clueCount).toBeLessThanOrEqual(15);
+        expect(latinCandidatesFor(candidate.structuredData.grid, row, column).length)
+          .toBeGreaterThanOrEqual(minimumCandidates);
+        expect(latinCandidatesFor(candidate.structuredData.grid, row, column).length)
+          .toBeLessThanOrEqual(maximumCandidates);
         expect(candidate.response.kind).toBe("single_choice");
         if (candidate.response.kind === "single_choice") {
           expect(candidate.response.options.map((option) => option.content)).toEqual(
@@ -58,10 +63,29 @@ describe("LatinSquareGenerator", () => {
           );
         }
         for (let index = 0; index < LATIN_SQUARE_SIZE; index += 1) {
-          expect(candidate.structuredData.grid[index].some(Boolean)).toBe(true);
-          expect(candidate.structuredData.grid.some((gridRow) => Boolean(gridRow[index]))).toBe(true);
+          expect(candidate.structuredData.grid[index].filter(Boolean).length).toBeLessThan(5);
+          expect(candidate.structuredData.grid.filter((gridRow) => Boolean(gridRow[index])).length)
+            .toBeLessThan(5);
         }
       }
+    },
+  );
+
+  it.each(["easy", "medium", "hard"] as const)(
+    "distributes %s targets across every row and column",
+    (difficulty) => {
+      const rows = new Set<number>();
+      const columns = new Set<number>();
+      for (let seed = 0; seed < 100; seed += 1) {
+        const { target } = latinSquareGenerator.generate(
+          { seed: `latin-target-${seed}`, difficulty },
+          1,
+        ).structuredData;
+        rows.add(target.row);
+        columns.add(target.column);
+      }
+      expect(rows.size).toBe(LATIN_SQUARE_SIZE);
+      expect(columns.size).toBe(LATIN_SQUARE_SIZE);
     },
   );
 
@@ -81,4 +105,3 @@ describe("LatinSquareGenerator", () => {
     ).toThrow(RangeError);
   });
 });
-
