@@ -8,8 +8,8 @@ export default async function GenerateQuestionsPage() {
   return (
     <PageShell
       eyebrow="Validated generation"
-      title="Generate and publish questions"
-      description="Generate deterministic Core questions. Every question is published automatically only after all solver, schema, uniqueness, and difficulty checks pass."
+      title="Generate question previews"
+      description="Generate and inspect deterministic Core questions. A question remains an unpublished in-memory preview until you explicitly publish it."
       admin
       roles={roles}
     >

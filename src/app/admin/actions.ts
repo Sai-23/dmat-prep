@@ -17,20 +17,26 @@ import {
 } from "@/lib/admin/data";
 import {
   equationGenerationRequestSchema,
+  generatedEquationSaveSchema,
+  generatedFigureSaveSchema,
+  generatedLatinSaveSchema,
   figureGenerationRequestSchema,
   latinGenerationRequestSchema,
 } from "@/lib/admin/generation-schemas";
 import {
   generateValidatedMathematicalEquation,
   mathematicalEquationStructuralSignature,
+  reproduceValidatedMathematicalEquation,
   type MathematicalEquationQuestion,
 } from "@/lib/generation/mathematical-equations";
 import {
   generateValidatedLatinSquare,
+  reproduceValidatedLatinSquare,
   type LatinSquareQuestion,
 } from "@/lib/generation/latin-squares";
 import {
   generateValidatedFigureSequence,
+  reproduceValidatedFigureSequence,
   type FigureSequenceQuestion,
 } from "@/lib/generation/figure-sequences";
 import {
@@ -70,14 +76,13 @@ export type EquationPreviewResponse =
       error: null;
       baseSeed: string;
       questions: MathematicalEquationQuestion[];
-      questionIds: string[];
     }
-  | { error: string; baseSeed?: undefined; questions?: undefined; questionIds?: undefined };
+  | { error: string; baseSeed?: undefined; questions?: undefined };
 
 export async function generateEquationPreviewAction(
   input: unknown,
 ): Promise<EquationPreviewResponse> {
-  const { user } = await requireRole(["admin"]);
+  await requireRole(["admin"]);
   const parsed = equationGenerationRequestSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid generation request." };
@@ -100,30 +105,48 @@ export async function generateEquationPreviewAction(
       structuralSignatures.add(mathematicalEquationStructuralSignature(question));
       questions.push(question);
     }
-    const questionIds: string[] = [];
-    for (const question of questions) {
-      questionIds.push(await createPublishedGeneratedEquation(user.id, question));
-    }
-    revalidateGeneratedQuestionPaths();
-    return { error: null, baseSeed, questions, questionIds };
+    return { error: null, baseSeed, questions };
   } catch (error) {
     return {
       error:
         error instanceof Error
           ? error.message
-          : "Unable to generate and publish validated equations.",
+          : "Unable to generate a validated equation preview.",
+    };
+  }
+}
+
+export async function publishGeneratedEquationAction(input: unknown) {
+  const { user } = await requireRole(["admin"]);
+  const parsed = generatedEquationSaveSchema.safeParse(input);
+  if (!parsed.success) return { error: "The equation preview provenance is invalid." };
+
+  try {
+    const question = reproduceValidatedMathematicalEquation(
+      { seed: parsed.data.seed, difficulty: parsed.data.difficulty },
+      parsed.data.attemptCount,
+    );
+    if (question.metadata.fingerprint !== parsed.data.fingerprint) {
+      return { error: "The equation preview could not be reproduced exactly and was not published." };
+    }
+    const questionId = await createPublishedGeneratedEquation(user.id, question);
+    revalidateGeneratedQuestionPaths();
+    return { error: null, questionId };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Unable to publish this equation.",
     };
   }
 }
 
 export type LatinPreviewResponse =
-  | { error: null; baseSeed: string; questions: LatinSquareQuestion[]; questionIds: string[] }
-  | { error: string; baseSeed?: undefined; questions?: undefined; questionIds?: undefined };
+  | { error: null; baseSeed: string; questions: LatinSquareQuestion[] }
+  | { error: string; baseSeed?: undefined; questions?: undefined };
 
 export async function generateLatinPreviewAction(
   input: unknown,
 ): Promise<LatinPreviewResponse> {
-  const { user } = await requireRole(["admin"]);
+  await requireRole(["admin"]);
   const parsed = latinGenerationRequestSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid generation request." };
@@ -142,28 +165,46 @@ export async function generateLatinPreviewAction(
       fingerprints.add(question.metadata.fingerprint);
       questions.push(question);
     }
-    const questionIds: string[] = [];
-    for (const question of questions) {
-      questionIds.push(await createPublishedGeneratedLatin(user.id, question));
-    }
-    revalidateGeneratedQuestionPaths();
-    return { error: null, baseSeed, questions, questionIds };
+    return { error: null, baseSeed, questions };
   } catch (error) {
     return {
       error:
         error instanceof Error
           ? error.message
-          : "Unable to generate and publish validated Latin squares.",
+          : "Unable to generate a validated Latin-square preview.",
+    };
+  }
+}
+
+export async function publishGeneratedLatinAction(input: unknown) {
+  const { user } = await requireRole(["admin"]);
+  const parsed = generatedLatinSaveSchema.safeParse(input);
+  if (!parsed.success) return { error: "The Latin-square preview provenance is invalid." };
+
+  try {
+    const question = reproduceValidatedLatinSquare(
+      { seed: parsed.data.seed, difficulty: parsed.data.difficulty },
+      parsed.data.attemptCount,
+    );
+    if (question.metadata.fingerprint !== parsed.data.fingerprint) {
+      return { error: "The Latin-square preview could not be reproduced exactly and was not published." };
+    }
+    const questionId = await createPublishedGeneratedLatin(user.id, question);
+    revalidateGeneratedQuestionPaths();
+    return { error: null, questionId };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Unable to publish this Latin square.",
     };
   }
 }
 
 export type FigurePreviewResponse =
-  | { error: null; baseSeed: string; questions: FigureSequenceQuestion[]; questionIds: string[] }
-  | { error: string; baseSeed?: undefined; questions?: undefined; questionIds?: undefined };
+  | { error: null; baseSeed: string; questions: FigureSequenceQuestion[] }
+  | { error: string; baseSeed?: undefined; questions?: undefined };
 
 export async function generateFigurePreviewAction(input: unknown): Promise<FigurePreviewResponse> {
-  const { user } = await requireRole(["admin"]);
+  await requireRole(["admin"]);
   const parsed = figureGenerationRequestSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid generation request." };
   try {
@@ -176,14 +217,32 @@ export async function generateFigurePreviewAction(input: unknown): Promise<Figur
       fingerprints.add(question.metadata.fingerprint);
       questions.push(question);
     }
-    const questionIds: string[] = [];
-    for (const question of questions) {
-      questionIds.push(await createPublishedGeneratedFigure(user.id, question));
-    }
-    revalidateGeneratedQuestionPaths();
-    return { error: null, baseSeed, questions, questionIds };
+    return { error: null, baseSeed, questions };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Unable to generate and publish validated figure sequences." };
+    return { error: error instanceof Error ? error.message : "Unable to generate a validated figure-sequence preview." };
+  }
+}
+
+export async function publishGeneratedFigureAction(input: unknown) {
+  const { user } = await requireRole(["admin"]);
+  const parsed = generatedFigureSaveSchema.safeParse(input);
+  if (!parsed.success) return { error: "The figure-sequence preview provenance is invalid." };
+
+  try {
+    const question = reproduceValidatedFigureSequence(
+      { seed: parsed.data.seed, difficulty: parsed.data.difficulty },
+      parsed.data.attemptCount,
+    );
+    if (question.metadata.fingerprint !== parsed.data.fingerprint) {
+      return { error: "The figure-sequence preview could not be reproduced exactly and was not published." };
+    }
+    const questionId = await createPublishedGeneratedFigure(user.id, question);
+    revalidateGeneratedQuestionPaths();
+    return { error: null, questionId };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Unable to publish this figure sequence.",
+    };
   }
 }
 
@@ -349,7 +408,7 @@ export async function saveAdminTestAction(
   } catch {
     return {
       status: "error",
-      message: "The test section structure is invalid.",
+      message: "The mock section structure is invalid.",
     };
   }
 
@@ -370,7 +429,7 @@ export async function saveAdminTestAction(
       status: "error",
       message:
         parsed.error.issues[0]?.message ??
-        "Check the test details and sections.",
+        "Check the mock details and sections.",
       errors: parsed.error.flatten().fieldErrors,
     };
   }
@@ -381,7 +440,7 @@ export async function saveAdminTestAction(
       ? adminTestIdSchema.safeParse(rawTestId)
       : null;
   if (parsedTestId && !parsedTestId.success) {
-    return { status: "error", message: "The test identifier is invalid." };
+    return { status: "error", message: "The mock identifier is invalid." };
   }
 
   try {
@@ -396,17 +455,17 @@ export async function saveAdminTestAction(
     return {
       status: "success",
       message: result.isPublished
-        ? "Test saved and published."
+        ? "Mock saved and published."
         : parsedTestId
-          ? "Test draft updated."
-          : "Test draft created.",
+          ? "Mock draft updated."
+          : "Mock draft created.",
       testId: result.id,
     };
   } catch (error) {
     return {
       status: "error",
       message:
-        error instanceof Error ? error.message : "Unable to save this test.",
+        error instanceof Error ? error.message : "Unable to save this mock.",
     };
   }
 }
@@ -414,7 +473,7 @@ export async function saveAdminTestAction(
 export async function adminTestLifecycleAction(input: unknown) {
   const { user } = await requireRole(["admin"]);
   const parsed = adminTestLifecycleSchema.safeParse(input);
-  if (!parsed.success) return { error: "The test lifecycle request is invalid." };
+  if (!parsed.success) return { error: "The mock lifecycle request is invalid." };
 
   try {
     await updateAdminTestPublication(
@@ -431,7 +490,7 @@ export async function adminTestLifecycleAction(input: unknown) {
       error:
         error instanceof Error
           ? error.message
-          : "Unable to update the test lifecycle.",
+          : "Unable to update the mock lifecycle.",
     };
   }
 }

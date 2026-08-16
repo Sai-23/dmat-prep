@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { seededShuffle } from "@/lib/tests/randomization";
 import type {
   PracticeAnswer,
   PracticeConfig,
@@ -40,15 +41,6 @@ type OptionRow = {
   content: string;
   sort_order: number;
 };
-
-function shuffled<T>(values: T[]) {
-  const result = [...values];
-  for (let index = result.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
-  }
-  return result;
-}
 
 export async function getPracticeFilters(): Promise<PracticeFilters> {
   const admin = createSupabaseAdminClient();
@@ -107,7 +99,8 @@ export async function createPracticeAttempt(
   const { data: questionData, error: questionError } = await query;
   if (questionError) throw new Error("Unable to load questions for this session.");
 
-  const selectedRows = shuffled((questionData ?? []) as QuestionRow[]).slice(
+  const randomizationSeed = crypto.randomUUID();
+  const selectedRows = seededShuffle((questionData ?? []) as QuestionRow[], randomizationSeed).slice(
     0,
     config.quantity,
   );
@@ -166,7 +159,7 @@ export async function createPracticeAttempt(
       user_id: userId,
       status: "in_progress",
       expires_at: expiresAt,
-      randomization_seed: crypto.randomUUID(),
+      randomization_seed: randomizationSeed,
     })
     .select("id, started_at")
     .single();

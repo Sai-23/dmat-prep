@@ -35,6 +35,7 @@ import type {
   AdminQuestionBankItem,
   EditableAdminTest,
 } from "@/lib/admin/test-schemas";
+import { filterMockQuestions, summarizeMockComposition } from "@/lib/admin/mock-builder";
 import { ADMIN_CORE_SECTION_TYPE_OPTIONS } from "@/lib/admin/core-options";
 
 type BuilderSection = EditableAdminTest["sections"][number] & {
@@ -82,6 +83,7 @@ export function TestBuilder({
   );
   const [search, setSearch] = useState("");
   const [difficulty, setDifficulty] = useState("all");
+  const [questionType, setQuestionType] = useState("all");
 
   const questionById = useMemo(
     () => new Map(questionBank.map((question) => [question.id, question])),
@@ -99,6 +101,18 @@ export function TestBuilder({
     (total, section) => total + section.questionIds.length,
     0,
   );
+  const selectedQuestions = sections.flatMap((section) =>
+    section.questionIds.flatMap((questionId) => {
+      const question = questionById.get(questionId);
+      return question ? [question] : [];
+    }),
+  );
+  const composition = summarizeMockComposition(selectedQuestions);
+  const inventoryDifficultyCounts = {
+    easy: questionBank.filter((question) => question.difficulty === "easy").length,
+    medium: questionBank.filter((question) => question.difficulty === "medium").length,
+    hard: questionBank.filter((question) => question.difficulty === "hard").length,
+  };
 
   const updateSection = (
     clientId: string,
@@ -199,9 +213,14 @@ export function TestBuilder({
       />
 
       <div className="space-y-6">
+        {initialTest ? (
+          <div className="rounded-xl border border-primary/30 bg-primary-container p-4 text-sm text-on-primary-container">
+            <span className="font-semibold">Editing:</span> {initialTest.title}. Existing and active attempts retain their immutable original snapshots.
+          </div>
+        ) : null}
         <Card>
           <CardHeader>
-            <CardTitle>Test details</CardTitle>
+            <CardTitle>Mock details</CardTitle>
             <CardDescription>
               Define how this assessment appears in the student catalog.
             </CardDescription>
@@ -218,7 +237,7 @@ export function TestBuilder({
               />
             </label>
             <label className="space-y-2 text-sm font-semibold">
-              Test type
+              Mock type
               <select
                 className="h-12 w-full rounded-xl border border-slate-300 bg-white px-4 font-normal"
                 defaultValue={initialTest?.testType ?? "mini_mock"}
@@ -231,7 +250,7 @@ export function TestBuilder({
               </select>
             </label>
             <label className="space-y-2 text-sm font-semibold">
-              Test module
+              Mock module
               <select
                 className="h-12 w-full rounded-xl border border-slate-300 bg-white px-4 font-normal"
                 name="module"
@@ -298,7 +317,7 @@ export function TestBuilder({
               <Badge variant="success">{questionBank.length} eligible</Badge>
             </div>
           </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-[1fr_180px]">
+          <CardContent className="grid gap-3 md:grid-cols-3">
             <label className="relative">
               <Search className="absolute left-4 top-3.5 h-4 w-4 text-slate-400" />
               <span className="sr-only">Search questions</span>
@@ -310,35 +329,39 @@ export function TestBuilder({
               />
             </label>
             <select
+              aria-label="Filter question type"
+              className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm"
+              onChange={(event) => setQuestionType(event.target.value)}
+              value={questionType}
+            >
+              <option value="all">All question types</option>
+              {ADMIN_CORE_SECTION_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            <select
               aria-label="Filter question difficulty"
               className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm"
               onChange={(event) => setDifficulty(event.target.value)}
               value={difficulty}
             >
               <option value="all">All difficulties</option>
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
+              <option value="easy">Easy ({inventoryDifficultyCounts.easy})</option>
+              <option value="medium">Medium ({inventoryDifficultyCounts.medium})</option>
+              <option value="hard">Hard ({inventoryDifficultyCounts.hard})</option>
             </select>
           </CardContent>
         </Card>
 
         {sections.map((section, sectionIndex) => {
           const effectiveModule = section.module ?? testModule;
-          const normalizedSearch = search.trim().toLowerCase();
-          const eligibleQuestions = questionBank
-            .filter(
-              (question) =>
-                (!effectiveModule || question.module === effectiveModule) &&
-                (section.sectionType === "mixed" || question.questionType === section.sectionType) &&
-                (difficulty === "all" ||
-                  question.difficulty === difficulty) &&
-                (!normalizedSearch ||
-                  `${question.questionText} ${question.topic} ${question.subtopic ?? ""}`
-                    .toLowerCase()
-                    .includes(normalizedSearch)),
-            )
-            .slice(0, 100);
+          const eligibleQuestions = filterMockQuestions(questionBank, {
+            module: effectiveModule as "core" | null,
+            sectionType: section.sectionType,
+            questionType: questionType as "all" | AdminQuestionBankItem["questionType"],
+            difficulty: difficulty as "all" | AdminQuestionBankItem["difficulty"],
+            search,
+          }).slice(0, 100);
 
           return (
             <Card key={section.clientId}>
@@ -461,7 +484,7 @@ export function TestBuilder({
                 {section.questionIds.length ? (
                   <div>
                     <p className="mb-3 text-sm font-semibold">
-                      Assigned question order
+                      Selected Questions — {section.questionIds.length}
                     </p>
                     <div className="space-y-2">
                       {section.questionIds.map((questionId, index) => {
@@ -474,9 +497,15 @@ export function TestBuilder({
                             <span className="font-semibold text-blue-800">
                               {index + 1}
                             </span>
-                            <span className="min-w-0 flex-1 truncate">
-                              {question?.questionText ??
-                                "Unavailable question—remove before saving"}
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate">
+                                {question?.questionText ?? "Unavailable / Deleted question—replace before saving"}
+                              </span>
+                              <span className="mt-1 block text-xs text-slate-500">
+                                {question
+                                  ? `${question.questionType.replaceAll("_", " ")} · ${question.difficulty} · ${question.id.slice(0, 8)}`
+                                  : questionId.slice(0, 8)}
+                              </span>
                             </span>
                             <button
                               aria-label="Move question up"
@@ -623,7 +652,7 @@ export function TestBuilder({
                   className="font-semibold underline"
                   href={"/admin/tests" as Route}
                 >
-                  Open test management
+                  Open Created Mocks
                 </Link>
               </span>
             ) : null}
@@ -631,7 +660,17 @@ export function TestBuilder({
         ) : null}
 
         <div className="flex flex-wrap justify-end gap-3">
-          <Button
+          {initialTest ? (
+            <Button
+              disabled={pending}
+              name="intent"
+              type="submit"
+              value={initialTest.isPublished ? "publish" : "draft"}
+            >
+              <Save className="h-4 w-4" />
+              {pending ? "Saving changes..." : "Save Changes"}
+            </Button>
+          ) : <><Button
             disabled={pending}
             name="intent"
             type="submit"
@@ -639,7 +678,7 @@ export function TestBuilder({
             variant="secondary"
           >
             <Save className="h-4 w-4" />
-            {pending ? "Saving..." : "Save draft"}
+            {pending ? "Saving..." : "Save Mock"}
           </Button>
           <Button
             disabled={pending}
@@ -648,8 +687,9 @@ export function TestBuilder({
             value="publish"
           >
             <Send className="h-4 w-4" />
-            {pending ? "Publishing..." : "Save and publish"}
+            {pending ? "Publishing..." : "Save and Publish Mock"}
           </Button>
+          </>}
         </div>
       </div>
 
@@ -658,7 +698,17 @@ export function TestBuilder({
           <CardHeader>
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-blue-700" />
-              <CardTitle>Test summary</CardTitle>
+              <CardTitle>Mock composition</CardTitle>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center text-xs">
+              <div className="rounded-xl border border-slate-200 p-2"><p className="text-base font-semibold">{composition.difficulty.easy}</p><p className="text-slate-500">Easy</p></div>
+              <div className="rounded-xl border border-slate-200 p-2"><p className="text-base font-semibold">{composition.difficulty.medium}</p><p className="text-slate-500">Medium</p></div>
+              <div className="rounded-xl border border-slate-200 p-2"><p className="text-base font-semibold">{composition.difficulty.hard}</p><p className="text-slate-500">Hard</p></div>
+            </div>
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between gap-3"><span>Figure Sequences</span><strong>{composition.questionType.figure_sequence}</strong></div>
+              <div className="flex justify-between gap-3"><span>Mathematical Equations</span><strong>{composition.questionType.mathematical_equation}</strong></div>
+              <div className="flex justify-between gap-3"><span>Latin Squares</span><strong>{composition.questionType.latin_square}</strong></div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -698,7 +748,7 @@ export function TestBuilder({
               ))}
             </div>
             <p className="text-xs leading-5 text-slate-500">
-              Publishing makes the test immediately visible in the student
+              Publishing makes the mock immediately visible in the student
               catalog. Only approved and published questions are accepted.
             </p>
           </CardContent>

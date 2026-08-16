@@ -63,7 +63,7 @@ export default async function AdminDashboardPage() {
           icon: AlertTriangle,
         },
         {
-          label: "Published tests",
+          label: "Published mocks",
           value: metrics.publishedTests,
           icon: FlaskConical,
         },
@@ -128,7 +128,7 @@ export default async function AdminDashboardPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-sm leading-6 text-slate-600">
-                    Create deterministic figure sequences, equation systems, or Latin squares. Valid questions publish automatically after every required check passes.
+                    Create deterministic figure sequences, equation systems, or Latin squares, inspect the validated preview, then publish explicitly.
                   </p>
                   <Button asChild variant="secondary">
                     <Link href={"/admin/generate" as Route}>
@@ -166,16 +166,15 @@ export default async function AdminDashboardPage() {
             {isAdmin ? (
               <Card>
                 <CardHeader>
-                  <CardTitle>Manage tests</CardTitle>
+                  <CardTitle>Mock Builder</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-sm leading-6 text-slate-600">
-                    Assemble approved questions into timed sections and control
-                    publication in the student test catalog.
+                    Filter and assemble approved questions, then preview, edit, and publish created mocks.
                   </p>
                   <Button asChild variant="secondary">
                     <Link href={"/admin/tests" as Route}>
-                      Open test management
+                      Open Mock Builder
                     </Link>
                   </Button>
                 </CardContent>

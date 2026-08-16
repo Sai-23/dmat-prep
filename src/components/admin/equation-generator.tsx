@@ -1,14 +1,15 @@
 "use client";
 
-import type { Route } from "next";
-import Link from "next/link";
-import { CheckCircle2, ShieldCheck, Sparkles } from "lucide-react";
+import { CheckCircle2, ShieldCheck, Sparkles, Trash2, Upload } from "lucide-react";
 import { FormEvent, useState, useTransition } from "react";
 
 import {
   generateEquationPreviewAction,
   generateFigurePreviewAction,
   generateLatinPreviewAction,
+  publishGeneratedEquationAction,
+  publishGeneratedFigureAction,
+  publishGeneratedLatinAction,
 } from "@/app/admin/actions";
 import { QuestionRenderer } from "@/components/questions/question-renderer";
 import { Badge } from "@/components/ui/badge";
@@ -32,14 +33,16 @@ export function UnifiedQuestionGenerator() {
   const [seed, setSeed] = useState("");
   const [baseSeed, setBaseSeed] = useState<string | null>(null);
   const [questions, setQuestions] = useState<GeneratedPreview[]>([]);
-  const [publishedIds, setPublishedIds] = useState<string[]>([]);
+  const [publishedIds, setPublishedIds] = useState<Record<string, string>>({});
+  const [publishingFingerprint, setPublishingFingerprint] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function generate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    setPublishedIds([]);
+    setMessage(null);
     startTransition(async () => {
       const request = { difficulty, quantity, seed };
       const response = questionType === "latin_square"
@@ -47,15 +50,49 @@ export function UnifiedQuestionGenerator() {
         : questionType === "figure_sequence"
           ? await generateFigurePreviewAction(request)
           : await generateEquationPreviewAction(request);
-      if (response.error || !response.questions || !response.questionIds) {
-        setError(response.error ?? "Unable to generate and publish questions.");
+      if (response.error || !response.questions) {
+        setError(response.error ?? "Unable to generate question previews.");
         return;
       }
       setQuestions(response.questions);
-      setPublishedIds(response.questionIds);
+      setPublishedIds({});
       setBaseSeed(response.baseSeed);
-      setSeed(response.baseSeed);
     });
+  }
+
+  function publish(question: GeneratedPreview) {
+    setError(null);
+    setMessage(null);
+    setPublishingFingerprint(question.metadata.fingerprint);
+    startTransition(async () => {
+      const provenance = {
+        seed: question.metadata.seed,
+        difficulty: question.metadata.requestedDifficulty,
+        attemptCount: question.metadata.attemptCount,
+        fingerprint: question.metadata.fingerprint,
+      };
+      const response = question.questionType === "latin_square"
+        ? await publishGeneratedLatinAction(provenance)
+        : question.questionType === "figure_sequence"
+          ? await publishGeneratedFigureAction(provenance)
+          : await publishGeneratedEquationAction(provenance);
+      setPublishingFingerprint(null);
+      if (response.error || !response.questionId) {
+        setError(response.error ?? "Unable to publish this question.");
+        return;
+      }
+      setPublishedIds((current) => ({
+        ...current,
+        [question.metadata.fingerprint]: response.questionId,
+      }));
+      setMessage("Question published successfully.");
+    });
+  }
+
+  function discard(fingerprint: string) {
+    setQuestions((current) => current.filter((question) => question.metadata.fingerprint !== fingerprint));
+    setError(null);
+    setMessage("Unpublished preview discarded.");
   }
 
   return (
@@ -71,7 +108,7 @@ export function UnifiedQuestionGenerator() {
           <form className="grid gap-5 md:grid-cols-2 xl:grid-cols-5 xl:items-end" onSubmit={generate}>
             <label className="space-y-2 text-sm font-medium">
               Question type
-              <select className="h-10 w-full rounded-md border border-input-border bg-input-background px-3 text-sm" disabled={isPending} onChange={(event) => { setQuestionType(event.target.value as GenerationQuestionType); setQuestions([]); setPublishedIds([]); }} value={questionType}>
+              <select className="h-10 w-full rounded-md border border-input-border bg-input-background px-3 text-sm" disabled={isPending} onChange={(event) => { setQuestionType(event.target.value as GenerationQuestionType); setQuestions([]); setPublishedIds({}); }} value={questionType}>
                 <option value="mathematical_equation">Mathematical Equations</option>
                 <option value="latin_square">Latin Squares</option>
                 <option value="figure_sequence">Figure Sequences</option>
@@ -85,33 +122,28 @@ export function UnifiedQuestionGenerator() {
             </label>
             <label className="space-y-2 text-sm font-medium">Quantity<Input disabled={isPending} max={20} min={1} onChange={(event) => setQuantity(Number(event.target.value))} required type="number" value={quantity} /></label>
             <label className="space-y-2 text-sm font-medium">Optional seed<Input disabled={isPending} maxLength={200} onChange={(event) => setSeed(event.target.value)} placeholder="Leave blank for a generated seed" value={seed} /></label>
-            <Button disabled={isPending} type="submit"><Sparkles className="h-4 w-4" />{isPending ? "Generating and publishing…" : quantity === 1 ? "Generate & Publish" : `Generate & Publish ${quantity}`}</Button>
+            <Button disabled={isPending} type="submit"><Sparkles className="h-4 w-4" />{isPending && !publishingFingerprint ? "Generating…" : questions.length ? "Generate Another" : quantity === 1 ? "Generate Question" : `Generate ${quantity} Questions`}</Button>
           </form>
           {error ? <p className="mt-4 rounded-md border border-error bg-error-container p-3 text-sm text-error-container-foreground" role="alert">{error}</p> : null}
+          {message ? <p className="mt-4 rounded-md border border-success bg-success-container p-3 text-sm text-success-container-foreground" role="status">{message}</p> : null}
         </CardContent>
       </Card>
 
       {questions.length ? (
         <section className="space-y-4" aria-labelledby="preview-heading">
-          <div className="rounded-md border border-success bg-success-container p-4 text-success-container-foreground" role="status">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="flex items-center gap-2 font-semibold"><CheckCircle2 className="h-5 w-5" />{questions.length} question{questions.length === 1 ? "" : "s"} generated, validated, and published</p>
-              <Button asChild size="sm" variant="outline"><Link href={"/admin/review" as Route}>View question bank</Link></Button>
-            </div>
-          </div>
           <div className="flex flex-wrap items-end justify-between gap-3">
-            <div><h2 className="text-xl font-semibold" id="preview-heading">Published questions</h2><p className="mt-1 text-sm text-muted-foreground">Base seed: <span className="font-mono">{baseSeed}</span></p></div>
-            <Badge variant="success"><ShieldCheck className="mr-1 h-3.5 w-3.5" />Published automatically</Badge>
+            <div><h2 className="text-xl font-semibold" id="preview-heading">Question preview</h2><p className="mt-1 text-sm text-muted-foreground">{questions.length} validated preview{questions.length === 1 ? "" : "s"} · Base seed: <span className="font-mono">{baseSeed}</span></p></div>
+            <Badge variant="success"><ShieldCheck className="mr-1 h-3.5 w-3.5" />All checks passed</Badge>
           </div>
           {questions.map((question, index) => {
-            const publishedId = publishedIds[index];
+            const publishedId = publishedIds[question.metadata.fingerprint];
             const label = question.questionType === "latin_square" ? "Latin square" : question.questionType === "figure_sequence" ? "Figure sequence" : "Equation";
             return (
               <Card key={question.metadata.fingerprint}>
                 <CardHeader>
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex flex-wrap gap-2"><Badge>{label} {index + 1}</Badge><Badge variant="subtle">{question.metadata.calculatedDifficulty}</Badge><Badge variant="success">Published</Badge></div>
-                    <span className="break-all font-mono text-xs text-muted-foreground">Question ID: {publishedId}</span>
+                    <div className="flex flex-wrap gap-2"><Badge>{label} {index + 1}</Badge><Badge variant="subtle">{question.metadata.calculatedDifficulty}</Badge><Badge variant="success">Validated</Badge>{publishedId ? <Badge variant="success">Published</Badge> : <Badge variant="subtle">Preview only</Badge>}</div>
+                    {publishedId ? <span className="break-all font-mono text-xs text-muted-foreground">Question ID: {publishedId}</span> : null}
                   </div>
                   <CardTitle className="pt-2">{question.presentation.prompt}</CardTitle>
                 </CardHeader>
@@ -128,7 +160,11 @@ export function UnifiedQuestionGenerator() {
                   </div>
                   <div className="grid gap-4 lg:grid-cols-2">
                     <div className="rounded-md bg-surface-low p-4"><p className="text-sm font-semibold">Explanation</p><p className="mt-2 whitespace-pre-line text-sm leading-7 text-on-surface-variant">{question.explanation}</p></div>
-                    <div className="rounded-md bg-surface-low p-4"><p className="text-sm font-semibold">Validation diagnostics</p><ul className="mt-2 space-y-2 text-sm">{question.validation.checks.map((check, checkIndex) => <li className="flex items-center justify-between gap-3" key={`${check.validatorVersion}-${check.stage}-${checkIndex}`}><span className="capitalize">{check.stage}</span><Badge variant={check.passed ? "success" : "warning"}>{check.passed ? "Passed" : "Failed"}</Badge></li>)}</ul><p className="mt-4 break-all font-mono text-xs text-muted-foreground">{question.metadata.fingerprint}</p><p className="mt-2 break-all text-xs text-success">Published ID: {publishedId}</p></div>
+                    <div className="rounded-md bg-surface-low p-4"><p className="text-sm font-semibold">Validation diagnostics</p><ul className="mt-2 space-y-2 text-sm">{question.validation.checks.map((check, checkIndex) => <li className="flex items-center justify-between gap-3" key={`${check.validatorVersion}-${check.stage}-${checkIndex}`}><span className="capitalize">{check.stage}</span><Badge variant={check.passed ? "success" : "warning"}>{check.passed ? "Passed" : "Failed"}</Badge></li>)}</ul><p className="mt-4 break-all font-mono text-xs text-muted-foreground">{question.metadata.fingerprint}</p>{publishedId ? <p className="mt-2 break-all text-xs text-success">Published ID: {publishedId}</p> : <p className="mt-2 text-xs text-muted-foreground">Not saved and not eligible for student delivery.</p>}</div>
+                  </div>
+                  <div className="flex flex-wrap justify-end gap-3 border-t border-workspace-separator pt-5">
+                    <Button disabled={isPending || Boolean(publishedId)} onClick={() => discard(question.metadata.fingerprint)} variant="outline"><Trash2 className="h-4 w-4" />Discard</Button>
+                    <Button disabled={isPending || Boolean(publishedId)} onClick={() => publish(question)}><Upload className="h-4 w-4" />{publishedId ? <><CheckCircle2 className="h-4 w-4" />Published</> : publishingFingerprint === question.metadata.fingerprint ? "Publishing…" : "Publish Question"}</Button>
                   </div>
                 </CardContent>
               </Card>

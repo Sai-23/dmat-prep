@@ -53,7 +53,7 @@ export const adminNavigation: NavigationItem[] = [
   },
   {
     href: "/admin/tests/new",
-    label: "Test Builder",
+    label: "Mock Builder",
     requiresAuth: true,
     roles: ["admin"],
   },

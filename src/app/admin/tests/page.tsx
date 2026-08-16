@@ -1,4 +1,5 @@
 import { TestManager } from "@/components/admin/test-manager";
+import { MockBuilderTabs } from "@/components/admin/mock-builder-tabs";
 import { PageShell } from "@/components/layout/page-shell";
 import { ErrorState } from "@/components/shared/error-state";
 import { getAdminTests } from "@/lib/admin/test-data";
@@ -12,25 +13,28 @@ export default async function AdminTestsPage() {
     tests = await getAdminTests();
   } catch (error) {
     loadError =
-      error instanceof Error ? error.message : "Unable to load test management.";
+      error instanceof Error ? error.message : "Unable to load created mocks.";
   }
 
   return (
     <PageShell
-      eyebrow="Test management"
-      title="Build and publish student assessments"
-      description="Manage draft and published diagnostics, sectional tests, mini mocks, and full mock examinations."
+      eyebrow="Mock Builder"
+      title="Created Mocks"
+      description="Find, preview, edit, and publish previously created Core mocks."
       admin
       roles={roles}
     >
+      <div className="space-y-6">
+      <MockBuilderTabs active="created" />
       {loadError || !tests ? (
         <ErrorState
-          title="Test management unavailable"
-          description={loadError ?? "Unable to load test management."}
+          title="Created Mocks unavailable"
+          description={loadError ?? "Unable to load created mocks."}
         />
       ) : (
         <TestManager initialTests={tests} />
       )}
+      </div>
     </PageShell>
   );
 }

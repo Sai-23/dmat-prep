@@ -13,7 +13,14 @@ function source(path: string) {
   return readFileSync(join(process.cwd(), path), "utf8");
 }
 
-describe("generated-question auto-publication", () => {
+function exportedFunction(sourceText: string, name: string) {
+  const start = sourceText.indexOf(`export async function ${name}`);
+  if (start < 0) throw new Error(`Missing exported function ${name}`);
+  const next = sourceText.indexOf("\nexport ", start + 1);
+  return sourceText.slice(start, next < 0 ? undefined : next);
+}
+
+describe("generated-question preview and explicit publication", () => {
   it("accepts fully validated output from every Core generator", () => {
     const equation = generateValidatedMathematicalEquation({ seed: "workflow-equation", difficulty: "easy" });
     const latin = generateValidatedLatinSquare({ seed: "workflow-latin", difficulty: "easy" });
@@ -62,7 +69,38 @@ describe("generated-question auto-publication", () => {
     }).allowed).toBe(false);
   });
 
-  it("persists new generated questions directly as approved and published", () => {
+  it("never persists or publishes from a Generate preview action", () => {
+    const actions = source("src/app/admin/actions.ts");
+    [
+      "generateEquationPreviewAction",
+      "generateLatinPreviewAction",
+      "generateFigurePreviewAction",
+    ].forEach((name) => {
+      const action = exportedFunction(actions, name);
+      expect(action).not.toContain("createPublishedGenerated");
+      expect(action).not.toContain("published_at");
+      expect(action).not.toContain("revalidateGeneratedQuestionPaths");
+      expect(action).toContain("return { error: null, baseSeed, questions }");
+    });
+  });
+
+  it("publishes only through separately authorized actions", () => {
+    const actions = source("src/app/admin/actions.ts");
+    [
+      ["publishGeneratedEquationAction", "createPublishedGeneratedEquation"],
+      ["publishGeneratedLatinAction", "createPublishedGeneratedLatin"],
+      ["publishGeneratedFigureAction", "createPublishedGeneratedFigure"],
+    ].forEach(([actionName, persistenceName]) => {
+      const action = exportedFunction(actions, actionName);
+      expect(action).toContain('requireRole(["admin"])');
+      expect(action).toContain(persistenceName);
+      expect(action).toContain("reproduceValidated");
+      expect(action).toContain("fingerprint");
+      expect(action).toContain("revalidateGeneratedQuestionPaths");
+    });
+  });
+
+  it("persists only an explicit publish with approved/published state and timestamp", () => {
     const data = source("src/lib/admin/data.ts");
     expect(data).toContain('export async function createPublishedGeneratedEquation');
     expect(data).toContain('export async function createPublishedGeneratedLatin');
@@ -71,6 +109,40 @@ describe("generated-question auto-publication", () => {
     expect(data.match(/publication_status: "published"/g)?.length).toBeGreaterThanOrEqual(3);
     expect(data.match(/published_at: publishedAt/g)).toHaveLength(3);
     expect(data).not.toContain("createGeneratedEquationDraft");
+  });
+
+  it("renders preview-only controls without chaining Generate to Publish", () => {
+    const component = source("src/components/admin/equation-generator.tsx");
+    const generateHandler = component.slice(
+      component.indexOf("function generate("),
+      component.indexOf("function publish("),
+    );
+    expect(generateHandler).not.toContain("publishGenerated");
+    expect(component).toContain("Question preview");
+    expect(component).toContain("Preview only");
+    expect(component).toContain("Publish Question");
+    expect(component).toContain("Generate Another");
+    expect(component).toContain("Discard");
+    expect(component).not.toContain("Generate & Publish");
+    expect(component).not.toContain("Published automatically");
+  });
+
+  it("keeps database defaults and triggers safe for unpublished records", () => {
+    const schema = source("supabase/migrations/202608040002_question_schema.sql");
+    expect(schema).toContain("verification_status public.verification_status not null default 'draft'");
+    expect(schema).toContain("publication_status public.publication_status not null default 'draft'");
+    expect(schema).toMatch(/published_at timestamptz[,\n]/);
+    expect(schema).not.toMatch(/published_at timestamptz[^\n]*default/i);
+    expect(schema).not.toMatch(/trigger[^\n]*publish/i);
+  });
+
+  it("requires published, approved, and non-deleted state in student eligibility queries", () => {
+    ["src/lib/practice/data.ts", "src/lib/tests/data.ts"].forEach((path) => {
+      const eligibility = source(path);
+      expect(eligibility).toContain('.eq("verification_status", "approved")');
+      expect(eligibility).toContain('.eq("publication_status", "published")');
+      expect(eligibility).toContain('.is("deleted_at", null)');
+    });
   });
 });
 

@@ -75,7 +75,7 @@ async function validateQuestionAssignments(input: AdminTestBuilderInput) {
 async function insertTestSections(
   testId: string,
   input: AdminTestBuilderInput,
-  sortOffset = 0,
+  options: { templateVersion?: number; isCurrent?: boolean } = {},
 ) {
   const admin = createSupabaseAdminClient();
   const { data: sections, error: sectionError } = await admin
@@ -87,7 +87,9 @@ async function insertTestSections(
         section_type: section.sectionType,
         module: section.module ?? input.module,
         duration_seconds: section.durationSeconds,
-        sort_order: sortOffset + index + 1,
+        sort_order: index + 1,
+        template_version: options.templateVersion ?? 1,
+        is_current: options.isCurrent ?? true,
       })),
     )
     .select("id, sort_order");
@@ -100,7 +102,7 @@ async function insertTestSections(
     sections.map((section) => [section.sort_order, section.id]),
   );
   const mappings = input.sections.flatMap((section, sectionIndex) => {
-    const sectionId = sectionByOrder.get(sortOffset + sectionIndex + 1);
+    const sectionId = sectionByOrder.get(sectionIndex + 1);
     if (!sectionId) return [];
     return section.questionIds.map((questionId, questionIndex) => ({
       test_section_id: sectionId,
@@ -160,20 +162,21 @@ export async function getAdminTests(): Promise<AdminTestListItem[]> {
   const { data: tests, error } = await admin
     .from("tests")
     .select(
-      "id, title, test_type, module, duration_seconds, is_premium, is_published, updated_at",
+      "id, title, test_type, module, duration_seconds, is_premium, is_published, created_at, updated_at",
     )
     .neq("id", PRACTICE_TEST_ID)
     .order("updated_at", { ascending: false })
     .limit(100);
-  if (error) throw new Error("Unable to load test management.");
+  if (error) throw new Error("Unable to load created mocks.");
   if (!tests?.length) return [];
 
   const testIds = tests.map((test) => test.id);
   const [{ data: sections }, { data: attempts }] = await Promise.all([
     admin
       .from("test_sections")
-      .select("id, test_id, section_type")
-      .in("test_id", testIds),
+      .select("id, test_id, title, section_type, duration_seconds, sort_order")
+      .in("test_id", testIds)
+      .eq("is_current", true),
     admin.from("test_attempts").select("id, test_id").in("test_id", testIds),
   ]);
   const sectionRows = sections ?? [];
@@ -181,9 +184,18 @@ export async function getAdminTests(): Promise<AdminTestListItem[]> {
   const { data: mappings } = sectionIds.length
     ? await admin
         .from("test_questions")
-        .select("test_section_id")
+        .select("test_section_id, question_id, sort_order")
         .in("test_section_id", sectionIds)
     : { data: [] };
+
+  const questionIds = [...new Set((mappings ?? []).map((mapping) => mapping.question_id))];
+  const { data: questions } = questionIds.length
+    ? await admin
+        .from("questions")
+        .select("id, question_type, difficulty, question_text, deleted_at")
+        .in("id", questionIds)
+    : { data: [] };
+  const questionById = new Map((questions ?? []).map((question) => [question.id, question]));
 
   return tests.filter((test) => sectionRows
     .filter((section) => section.test_id === test.id)
@@ -210,7 +222,28 @@ export async function getAdminTests(): Promise<AdminTestListItem[]> {
       attemptCount: (attempts ?? []).filter(
         (attempt) => attempt.test_id === test.id,
       ).length,
+      createdAt: test.created_at,
       updatedAt: test.updated_at,
+      sections: testSections
+        .sort((first, second) => first.sort_order - second.sort_order)
+        .map((section) => ({
+          title: section.title,
+          sectionType: section.section_type,
+          durationSeconds: section.duration_seconds,
+          questions: (mappings ?? [])
+            .filter((mapping) => mapping.test_section_id === section.id)
+            .sort((first, second) => first.sort_order - second.sort_order)
+            .map((mapping) => {
+              const question = questionById.get(mapping.question_id);
+              return {
+                id: mapping.question_id,
+                questionType: question?.question_type ?? "unknown",
+                difficulty: question?.difficulty ?? "unknown",
+                questionText: question?.question_text ?? "Unavailable question",
+                unavailable: !question || Boolean(question.deleted_at),
+              };
+            }),
+        })),
     };
   }) as AdminTestListItem[];
 }
@@ -229,27 +262,12 @@ export async function getEditableAdminTest(
     .maybeSingle();
   if (error) throw new Error("Unable to load this test.");
   if (!test) return null;
-  if (test.is_published) {
-    throw new Error("Unpublish this test before editing its structure.");
-  }
-
-  const [{ count: attemptCount }, { data: sections, error: sectionError }] =
-    await Promise.all([
-      admin
-        .from("test_attempts")
-        .select("id", { count: "exact", head: true })
-        .eq("test_id", testId),
-      admin
+  const { data: sections, error: sectionError } = await admin
         .from("test_sections")
         .select("id, title, section_type, module, duration_seconds, sort_order")
         .eq("test_id", testId)
-        .order("sort_order", { ascending: true }),
-    ]);
-  if ((attemptCount ?? 0) > 0) {
-    throw new Error(
-      "Tests with existing attempts cannot be structurally edited.",
-    );
-  }
+        .eq("is_current", true)
+        .order("sort_order", { ascending: true });
   if (sectionError) throw new Error("Unable to load this test’s sections.");
   if ((sections ?? []).some((section) => !["figure_sequence", "mathematical_equation", "latin_square", "mixed"].includes(section.section_type))) return null;
 
@@ -328,62 +346,48 @@ export async function saveAdminTest(
     if (resolvedTestId === PRACTICE_TEST_ID) {
       throw new Error("The internal practice test cannot be edited.");
     }
-    const [{ data: current }, { count: attemptCount }] = await Promise.all([
-      admin
+    const { data: current } = await admin
         .from("tests")
         .select("id, is_published")
         .eq("id", resolvedTestId)
-        .maybeSingle(),
-      admin
-        .from("test_attempts")
-        .select("id", { count: "exact", head: true })
-        .eq("test_id", resolvedTestId),
-    ]);
+        .maybeSingle();
     if (!current) throw new Error("Test not found.");
-    if (current.is_published) {
-      throw new Error("Unpublish this test before editing its structure.");
-    }
-    if ((attemptCount ?? 0) > 0) {
-      throw new Error(
-        "Tests with existing attempts cannot be structurally edited.",
-      );
-    }
 
-    const { data: oldSections } = await admin
+    const { data: oldSections, error: oldSectionError } = await admin
       .from("test_sections")
-      .select("id")
-      .eq("test_id", resolvedTestId);
+      .select("id, template_version")
+      .eq("test_id", resolvedTestId)
+      .eq("is_current", true);
+    if (oldSectionError || !oldSections?.length) {
+      throw new Error("Unable to load the current mock template.");
+    }
+    const nextTemplateVersion = Math.max(
+      ...oldSections.map((section) => Number(section.template_version ?? 1)),
+    ) + 1;
     const stagedSections = await insertTestSections(
       resolvedTestId,
       input,
-      1000,
+      { templateVersion: nextTemplateVersion, isCurrent: false },
     );
     const stagedIds = stagedSections.map((section) => section.id);
 
-    if (oldSections?.length) {
-      const { error: deleteError } = await admin
-        .from("test_sections")
-        .delete()
-        .in(
-          "id",
-          oldSections.map((section) => section.id),
-        );
-      if (deleteError) {
-        await admin.from("test_sections").delete().in("id", stagedIds);
-        throw new Error("Unable to replace the previous test structure.");
-      }
+    const { error: retireError } = await admin
+      .from("test_sections")
+      .update({ is_current: false })
+      .in("id", oldSections.map((section) => section.id));
+    if (retireError) {
+      await admin.from("test_sections").delete().in("id", stagedIds);
+      throw new Error("Unable to version the previous mock structure.");
     }
 
-    const normalizationResults = await Promise.all(
-      stagedSections.map((section, index) =>
-        admin
-          .from("test_sections")
-          .update({ sort_order: index + 1 })
-          .eq("id", section.id),
-      ),
-    );
-    if (normalizationResults.some((result) => result.error)) {
-      throw new Error("The test was saved, but section ordering failed.");
+    const { error: activateError } = await admin
+      .from("test_sections")
+      .update({ is_current: true })
+      .in("id", stagedIds);
+    if (activateError) {
+      await admin.from("test_sections").update({ is_current: true }).in("id", oldSections.map((section) => section.id));
+      await admin.from("test_sections").delete().in("id", stagedIds);
+      throw new Error("Unable to activate the revised mock structure.");
     }
 
     const { error: updateError } = await admin
@@ -401,7 +405,10 @@ export async function saveAdminTest(
       })
       .eq("id", resolvedTestId);
     if (updateError) {
-      throw new Error("The structure was saved, but test details failed.");
+      await admin.from("test_sections").update({ is_current: false }).in("id", stagedIds);
+      await admin.from("test_sections").update({ is_current: true }).in("id", oldSections.map((section) => section.id));
+      await admin.from("test_sections").delete().in("id", stagedIds);
+      throw new Error("The structure was saved, but mock details failed.");
     }
   }
 
@@ -456,7 +463,8 @@ export async function updateAdminTestPublication(
   const { data: existingSections } = await admin
     .from("test_sections")
     .select("section_type")
-    .eq("test_id", testId);
+    .eq("test_id", testId)
+    .eq("is_current", true);
   if ((existingSections ?? []).some((section) => !["figure_sequence", "mathematical_equation", "latin_square", "mixed"].includes(section.section_type))) {
     throw new Error("This legacy test is unavailable in the Core-only product.");
   }
@@ -474,7 +482,8 @@ export async function updateAdminTestPublication(
     const { data: sections } = await admin
       .from("test_sections")
       .select("id, title, section_type, duration_seconds, sort_order")
-      .eq("test_id", testId);
+      .eq("test_id", testId)
+      .eq("is_current", true);
     if (!sections?.length) throw new Error("Add at least one test section.");
     const sectionIds = sections.map((section) => section.id);
     const { data: mappings } = await admin

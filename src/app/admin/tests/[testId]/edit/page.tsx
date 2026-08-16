@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { TestBuilder } from "@/components/admin/test-builder";
+import { MockBuilderTabs } from "@/components/admin/mock-builder-tabs";
 import { PageShell } from "@/components/layout/page-shell";
 import { ErrorState } from "@/components/shared/error-state";
 import {
@@ -35,20 +36,23 @@ export default async function AdminTestEditPage({
 
   return (
     <PageShell
-      eyebrow="Test editor"
-      title="Revise the assessment structure"
-      description="Update an unpublished test before any student attempts exist, then save it as a draft or publish it."
+      eyebrow="Mock Builder"
+      title={`Edit Mock${test ? `: ${test.title}` : ""}`}
+      description="Revise the current mock template. Active and historical attempts continue using their immutable original snapshots."
       admin
       roles={roles}
     >
+      <div className="space-y-6">
+      <MockBuilderTabs active="build" />
       {loadError || !test || !questionBank ? (
         <ErrorState
-          title="Test cannot be edited"
-          description={loadError ?? "Unable to load this test."}
+          title="Mock cannot be edited"
+          description={loadError ?? "Unable to load this mock."}
         />
       ) : (
         <TestBuilder initialTest={test} questionBank={questionBank} />
       )}
+      </div>
     </PageShell>
   );
 }

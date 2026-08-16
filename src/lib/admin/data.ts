@@ -155,7 +155,7 @@ export async function createPublishedGeneratedEquation(
     question_id: saved.id,
     version: 1,
     snapshot: questionSnapshot(saved, []),
-    change_summary: "Validated generated equation published automatically.",
+    change_summary: "Validated generated equation published by an administrator.",
     changed_by: actorId,
   });
   if (versionError) {
@@ -237,7 +237,7 @@ export async function createPublishedGeneratedLatin(
     question_id: saved.id,
     version: 1,
     snapshot: questionSnapshot(saved, []),
-    change_summary: "Validated generated Latin square published automatically.",
+    change_summary: "Validated generated Latin square published by an administrator.",
     changed_by: actorId,
   });
   if (versionError) {
@@ -308,7 +308,7 @@ export async function createPublishedGeneratedFigure(
     question_id: saved.id,
     version: 1,
     snapshot: questionSnapshot(saved, []),
-    change_summary: "Validated generated figure sequence published automatically.",
+    change_summary: "Validated generated figure sequence published by an administrator.",
     changed_by: actorId,
   });
   if (versionError) {
@@ -380,6 +380,7 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
         .from("test_sections")
         .select("test_id, section_type")
         .in("test_id", publishedTestIds)
+        .eq("is_current", true)
     : { data: [], error: null };
   if (publishedSectionsError) throw new Error("Unable to load administrative metrics.");
   const coreSectionTypes = new Set(["figure_sequence", "mathematical_equation", "latin_square", "mixed"]);

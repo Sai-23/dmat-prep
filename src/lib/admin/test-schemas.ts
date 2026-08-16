@@ -23,7 +23,7 @@ const testSectionSchema = z.object({
 
 export const adminTestBuilderSchema = z
   .object({
-    title: z.string().trim().min(3, "Enter a test title.").max(160),
+    title: z.string().trim().min(3, "Enter a mock title.").max(160),
     description: z
       .string()
       .trim()
@@ -50,14 +50,14 @@ export const adminTestBuilderSchema = z
       context.addIssue({
         code: "custom",
         path: ["sections"],
-        message: "A test can contain at most 200 questions.",
+        message: "A mock can contain at most 200 questions.",
       });
     }
     if (new Set(questionIds).size !== questionIds.length) {
       context.addIssue({
         code: "custom",
         path: ["sections"],
-        message: "A question can only appear once in a test.",
+        message: "A question can only appear once in a mock.",
       });
     }
     value.sections.forEach((section, index) => {
@@ -65,7 +65,7 @@ export const adminTestBuilderSchema = z
         context.addIssue({
           code: "custom",
           path: ["sections", index, "module"],
-          message: "The section module must match the test module.",
+          message: "The section module must match the mock module.",
         });
       }
     });
@@ -125,5 +125,18 @@ export type AdminTestListItem = {
   sectionCount: number;
   questionCount: number;
   attemptCount: number;
+  createdAt: string;
   updatedAt: string;
+  sections: Array<{
+    title: string;
+    sectionType: "figure_sequence" | "mathematical_equation" | "latin_square" | "mixed";
+    durationSeconds: number;
+    questions: Array<{
+      id: string;
+      questionType: "figure_sequence" | "mathematical_equation" | "latin_square" | "unknown";
+      difficulty: "easy" | "medium" | "hard" | "unknown";
+      questionText: string;
+      unavailable: boolean;
+    }>;
+  }>;
 };

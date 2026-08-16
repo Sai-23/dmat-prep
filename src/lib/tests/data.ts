@@ -103,7 +103,8 @@ async function getPublishedTest(testId: string) {
   const { data: sections } = await admin
     .from("test_sections")
     .select("section_type")
-    .eq("test_id", testId);
+    .eq("test_id", testId)
+    .eq("is_current", true);
   if (!(sections ?? []).every((section) => CORE_SECTION_TYPES.has(section.section_type))) return null;
   return data as PublishedTestRow;
 }
@@ -137,7 +138,8 @@ export async function getTestCatalog(userId: string): Promise<TestCatalogItem[]>
     admin
       .from("test_sections")
       .select("id, test_id, title, section_type, duration_seconds, sort_order")
-      .in("test_id", testIds),
+      .in("test_id", testIds)
+      .eq("is_current", true),
     hasPremiumAccess(userId),
   ]);
   const sections = (sectionData ?? []) as SectionRow[];
@@ -187,6 +189,7 @@ export async function getTestOverview(
       .from("test_sections")
       .select("id, test_id, title, duration_seconds, sort_order")
       .eq("test_id", testId)
+      .eq("is_current", true)
       .order("sort_order", { ascending: true }),
     hasPremiumAccess(userId),
   ]);
@@ -249,6 +252,7 @@ export async function startTestAttempt(userId: string, testId: string) {
     .from("test_sections")
     .select("id, test_id, title, section_type, duration_seconds, sort_order")
     .eq("test_id", testId)
+    .eq("is_current", true)
     .order("sort_order");
   if (sectionError) throw new Error("Unable to assemble the test sections.");
   const sections = (sectionData ?? []) as SectionRow[];
